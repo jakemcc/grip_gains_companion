@@ -34,6 +34,13 @@ object ToneGenerator {
     fun playLowTone() {
         playTone(frequency = 440.0, durationMs = 150) // A4
     }
+
+    /**
+     * Play a confirmation tone when weight returns to target range
+     */
+    fun playOnTargetTone() {
+        playTone(frequency = 660.0, durationMs = 120) // E5
+    }
     
     /**
      * Generate and play a sine wave tone
@@ -70,7 +77,7 @@ object ToneGenerator {
                 val audioTrack = AudioTrack.Builder()
                     .setAudioAttributes(
                         AudioAttributes.Builder()
-                            .setUsage(AudioAttributes.USAGE_NOTIFICATION)
+                            .setUsage(AudioAttributes.USAGE_MEDIA)
                             .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
                             .build()
                     )
@@ -82,11 +89,11 @@ object ToneGenerator {
                             .build()
                     )
                     .setBufferSizeInBytes(maxOf(bufferSize, samples.size * 2))
-                    .setTransferMode(AudioTrack.MODE_STATIC)
+                    .setTransferMode(AudioTrack.MODE_STREAM)
                     .build()
                 
-                audioTrack.write(samples, 0, samples.size)
                 audioTrack.play()
+                audioTrack.write(samples, 0, samples.size)
                 
                 // Wait for playback to complete
                 Thread.sleep(durationMs.toLong() + 50)

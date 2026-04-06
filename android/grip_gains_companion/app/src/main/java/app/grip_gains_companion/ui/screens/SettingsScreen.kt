@@ -18,7 +18,9 @@ import app.grip_gains_companion.data.PreferencesRepository
 import app.grip_gains_companion.model.ConnectionState
 import app.grip_gains_companion.service.ble.BluetoothManager
 import app.grip_gains_companion.service.web.WebViewBridge
+import app.grip_gains_companion.util.TonePreviewAction
 import app.grip_gains_companion.util.WeightFormatter
+import app.grip_gains_companion.util.playTonePreview
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 
@@ -244,6 +246,15 @@ fun SettingsScreen(
                     checked = enableTargetSound,
                     onCheckedChange = { scope.launch { preferencesRepository.setEnableTargetSound(it) } }
                 )
+
+                TonePreviewAction.entries.forEach { action ->
+                    ListItem(
+                        headlineContent = { Text(action.previewTitle) },
+                        supportingContent = { Text(action.previewDescription) },
+                        leadingContent = { Icon(Icons.Default.PlayArrow, contentDescription = null) },
+                        modifier = Modifier.clickableRow { playTonePreview(action) }
+                    )
+                }
                 
                 SwitchPreference(
                     title = "Grip Statistics",
@@ -556,3 +567,19 @@ private fun StepperPreference(
 private fun Modifier.clickableRow(onClick: () -> Unit): Modifier {
     return this.clickable(onClick = onClick)
 }
+
+private val TonePreviewAction.previewTitle: String
+    get() = when (this) {
+        TonePreviewAction.Warning -> "Play Warning Tone"
+        TonePreviewAction.TooHeavy -> "Play Too Heavy Tone"
+        TonePreviewAction.TooLight -> "Play Too Light Tone"
+        TonePreviewAction.BackOnTarget -> "Play Back-on-Target Tone"
+    }
+
+private val TonePreviewAction.previewDescription: String
+    get() = when (this) {
+        TonePreviewAction.Warning -> "General alert tone."
+        TonePreviewAction.TooHeavy -> "Higher pitch for force above target."
+        TonePreviewAction.TooLight -> "Lower pitch for force below target."
+        TonePreviewAction.BackOnTarget -> "Confirmation tone for returning within tolerance."
+    }

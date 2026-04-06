@@ -57,8 +57,8 @@ class ProgressorHandler {
     private val _gripDisengaged = MutableSharedFlow<Pair<Double, List<Double>>>()
     val gripDisengaged = _gripDisengaged.asSharedFlow()
     
-    private val _offTargetChanged = MutableSharedFlow<Pair<Boolean, Double?>>()
-    val offTargetChanged = _offTargetChanged.asSharedFlow()
+    private val _targetFeedbackEvents = MutableSharedFlow<TargetFeedbackEvent>()
+    val targetFeedbackEvents = _targetFeedbackEvents.asSharedFlow()
     
     // MARK: - External Input
     
@@ -89,7 +89,7 @@ class ProgressorHandler {
     private var lastTimestamp: Long = 0
     private var firstDeviceTimestamp: Long? = null
     private var firstDisplayTimestamp: Date? = null
-    private var offTargetTimerRunning = false
+    private var lastOffTargetFeedbackTimestampMicros: Long? = null
     
     // Convenience properties
     val engaged: Boolean get() = _state.value.isEngaged
@@ -262,6 +262,9 @@ class ProgressorHandler {
             is ProgressorState.Idle -> {
                 val taredWeight = rawWeight - currentState.baselineValue
                 handleIdleState(rawWeight, taredWeight, currentState.baselineValue, timestamp)
+                if (_state.value is ProgressorState.Gripping) {
+                    checkOffTarget(taredWeight, timestamp)
+                }
             }
             
             is ProgressorState.Gripping -> {
@@ -288,7 +291,7 @@ class ProgressorHandler {
                         currentState.startTimestamp,
                         newSamples
                     )
-                    checkOffTarget(taredWeight)
+                    checkOffTarget(taredWeight, timestamp)
                 }
             }
             
@@ -298,6 +301,9 @@ class ProgressorHandler {
                     rawWeight, taredWeight, currentState.baselineValue,
                     currentState.samples, currentState.isHolding, timestamp
                 )
+                if (_state.value is ProgressorState.Gripping) {
+                    checkOffTarget(taredWeight, timestamp)
+                }
             }
         }
     }
@@ -358,13 +364,12 @@ class ProgressorHandler {
     
     // MARK: - Target Weight Checking
     
-    private suspend fun checkOffTarget(rawWeight: Double) {
+    private suspend fun checkOffTarget(rawWeight: Double, timestamp: Long) {
         val target = targetWeight ?: run {
             stopOffTargetTimer()
             if (_isOffTarget.value) {
                 _isOffTarget.value = false
                 _offTargetDirection.value = null
-                _offTargetChanged.emit(Pair(false, null))
             }
             return
         }
@@ -376,20 +381,27 @@ class ProgressorHandler {
             _isOffTarget.value = true
             _offTargetDirection.value = difference
             if (!wasOffTarget) {
-                // Just went off target - emit event
-                _offTargetChanged.emit(Pair(true, difference))
+                _targetFeedbackEvents.emit(TargetFeedbackEvent.OffTarget(difference))
+                lastOffTargetFeedbackTimestampMicros = timestamp
+            } else {
+                val lastFeedback = lastOffTargetFeedbackTimestampMicros
+                val intervalMicros = AppConstants.OFF_TARGET_FEEDBACK_INTERVAL_MS * 1_000
+                if (lastFeedback == null || timestamp - lastFeedback >= intervalMicros) {
+                    _targetFeedbackEvents.emit(TargetFeedbackEvent.OffTarget(difference))
+                    lastOffTargetFeedbackTimestampMicros = timestamp
+                }
             }
         } else {
             stopOffTargetTimer()
             _isOffTarget.value = false
             _offTargetDirection.value = null
             if (wasOffTarget) {
-                _offTargetChanged.emit(Pair(false, null))
+                _targetFeedbackEvents.emit(TargetFeedbackEvent.BackOnTarget)
             }
         }
     }
     
     private fun stopOffTargetTimer() {
-        offTargetTimerRunning = false
+        lastOffTargetFeedbackTimestampMicros = null
     }
 }

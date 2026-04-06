@@ -18,6 +18,7 @@ import androidx.lifecycle.lifecycleScope
 import app.grip_gains_companion.data.PreferencesRepository
 import app.grip_gains_companion.model.ConnectionState
 import app.grip_gains_companion.service.ProgressorHandler
+import app.grip_gains_companion.service.TargetFeedbackEvent
 import app.grip_gains_companion.service.ble.BluetoothManager
 import app.grip_gains_companion.service.web.WebViewBridge
 import app.grip_gains_companion.ui.screens.DeviceScannerScreen
@@ -264,27 +265,28 @@ class MainActivity : ComponentActivity() {
             }
         }
         
-        // Off-target feedback
+        // Target-weight feedback
         lifecycleScope.launch {
-            progressorHandler.offTargetChanged.collect { (isOffTarget, direction) ->
-                if (!isOffTarget) return@collect
-                
+            progressorHandler.targetFeedbackEvents.collect { event ->
                 val enableHaptics = preferencesRepository.enableHaptics.first()
                 val enableSound = preferencesRepository.enableTargetSound.first()
                 
-                if (enableHaptics) {
+                if (enableHaptics && event is TargetFeedbackEvent.OffTarget) {
                     hapticManager.warning()
                 }
                 
                 if (enableSound) {
-                    if (direction != null) {
-                        if (direction > 0) {
-                            ToneGenerator.playHighTone() // Too heavy
-                        } else {
-                            ToneGenerator.playLowTone() // Too light
+                    when (event) {
+                        is TargetFeedbackEvent.OffTarget -> {
+                            if (event.direction > 0) {
+                                ToneGenerator.playHighTone() // Too heavy
+                            } else {
+                                ToneGenerator.playLowTone() // Too light
+                            }
                         }
-                    } else {
-                        ToneGenerator.playWarningTone()
+                        TargetFeedbackEvent.BackOnTarget -> {
+                            ToneGenerator.playOnTargetTone()
+                        }
                     }
                 }
             }
