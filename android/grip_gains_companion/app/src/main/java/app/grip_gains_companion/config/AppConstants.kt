@@ -27,7 +27,7 @@ object AppConstants {
     // MARK: - Percentage-Based Thresholds
     const val DEFAULT_ENABLE_PERCENTAGE_THRESHOLDS = true
     const val DEFAULT_ENGAGE_PERCENTAGE = 0.50      // 50% of target weight
-    const val DEFAULT_DISENGAGE_PERCENTAGE = 0.20   // 20% of target weight
+    const val DEFAULT_DISENGAGE_PERCENTAGE = 0.40   // 40% of target weight
     const val DEFAULT_TOLERANCE_PERCENTAGE = 0.05   // 5% of target weight
     const val MIN_PERCENTAGE = 0.05                 // 5% minimum
     const val MAX_ENGAGE_PERCENTAGE = 0.90          // 90% maximum for engage

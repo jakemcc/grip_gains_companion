@@ -1,5 +1,6 @@
 package app.grip_gains_companion
 
+import app.grip_gains_companion.config.AppConstants
 import org.junit.Test
 
 import org.junit.Assert.*
@@ -13,5 +14,10 @@ class ExampleUnitTest {
     @Test
     fun addition_isCorrect() {
         assertEquals(4, 2 + 2)
+    }
+
+    @Test
+    fun defaultDisengagePercentage_isFortyPercent() {
+        assertEquals(0.40, AppConstants.DEFAULT_DISENGAGE_PERCENTAGE, 0.0)
     }
 }
