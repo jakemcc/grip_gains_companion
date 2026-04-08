@@ -7,9 +7,15 @@ ANDROID_HOME ?= $(HOME)/Library/Android/sdk
 ANDROID_SDK_ROOT ?= $(ANDROID_HOME)
 GRADLEW := ./gradlew
 ADB := adb
+APKSIGNER := $(lastword $(sort $(wildcard $(ANDROID_HOME)/build-tools/*)))/apksigner
 SERIAL_ARG := $(if $(SERIAL),-s $(SERIAL),)
 DEBUG_APK := app/build/outputs/apk/debug/app-debug.apk
-RELEASE_APK := app/build/outputs/apk/release/app-release.apk
+RELEASE_METADATA := app/build/outputs/apk/release/output-metadata.json
+RELEASE_APK = app/build/outputs/apk/release/$(shell sed -n 's/.*"outputFile": "\(.*\)".*/\1/p' $(RELEASE_METADATA) | head -n 1)
+SIGNED_RELEASE_APK := app/build/outputs/apk/release/app-release-signed.apk
+DEBUG_KEYSTORE := $(HOME)/.android/debug.keystore
+DEBUG_KEY_ALIAS := androiddebugkey
+DEBUG_KEY_PASSWORD := android
 
 export ANDROID_HOME
 export ANDROID_SDK_ROOT
@@ -50,7 +56,8 @@ install: ## Build and install the debug app; set SERIAL=<device-id> when needed
 
 install-release: ## Build and install the release app; set SERIAL=<device-id> when needed
 	$(GRADLEW) assembleRelease
-	$(ADB) $(SERIAL_ARG) install -r $(RELEASE_APK)
+	$(APKSIGNER) sign --ks $(DEBUG_KEYSTORE) --ks-key-alias $(DEBUG_KEY_ALIAS) --ks-pass pass:$(DEBUG_KEY_PASSWORD) --key-pass pass:$(DEBUG_KEY_PASSWORD) --out $(SIGNED_RELEASE_APK) $(RELEASE_APK)
+	$(ADB) $(SERIAL_ARG) install -r $(SIGNED_RELEASE_APK)
 
 run: ## Launch the app; set SERIAL=<device-id> when needed
 	$(ADB) $(SERIAL_ARG) shell am start -n $(MAIN_ACTIVITY)
