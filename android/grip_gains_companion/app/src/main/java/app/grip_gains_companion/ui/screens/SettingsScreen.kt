@@ -46,6 +46,9 @@ fun SettingsScreen(
     val useLbs by preferencesRepository.useLbs.collectAsStateWithLifecycle(initialValue = false)
     val enableHaptics by preferencesRepository.enableHaptics.collectAsStateWithLifecycle(initialValue = true)
     val enableTargetSound by preferencesRepository.enableTargetSound.collectAsStateWithLifecycle(initialValue = true)
+    val enableTooHeavySound by preferencesRepository.enableTooHeavySound.collectAsStateWithLifecycle(initialValue = true)
+    val enableTooLightSound by preferencesRepository.enableTooLightSound.collectAsStateWithLifecycle(initialValue = true)
+    val enableBackOnTargetSound by preferencesRepository.enableBackOnTargetSound.collectAsStateWithLifecycle(initialValue = true)
     val showStatusBar by preferencesRepository.showStatusBar.collectAsStateWithLifecycle(initialValue = true)
     val expandedForceBar by preferencesRepository.expandedForceBar.collectAsStateWithLifecycle(initialValue = true)
     val showForceGraph by preferencesRepository.showForceGraph.collectAsStateWithLifecycle(initialValue = true)
@@ -245,6 +248,24 @@ fun SettingsScreen(
                     title = "Target Weight Sounds",
                     checked = enableTargetSound,
                     onCheckedChange = { scope.launch { preferencesRepository.setEnableTargetSound(it) } }
+                )
+
+                SwitchPreference(
+                    title = "Too Heavy Sound",
+                    checked = enableTooHeavySound,
+                    onCheckedChange = { scope.launch { preferencesRepository.setEnableTooHeavySound(it) } }
+                )
+
+                SwitchPreference(
+                    title = "Too Light Sound",
+                    checked = enableTooLightSound,
+                    onCheckedChange = { scope.launch { preferencesRepository.setEnableTooLightSound(it) } }
+                )
+
+                SwitchPreference(
+                    title = "Back-on-Target Sound",
+                    checked = enableBackOnTargetSound,
+                    onCheckedChange = { scope.launch { preferencesRepository.setEnableBackOnTargetSound(it) } }
                 )
 
                 TonePreviewAction.entries.forEach { action ->

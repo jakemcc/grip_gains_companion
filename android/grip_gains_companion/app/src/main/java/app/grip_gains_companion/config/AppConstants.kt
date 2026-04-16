@@ -47,6 +47,9 @@ object AppConstants {
     // MARK: - UI Defaults
     const val DEFAULT_ENABLE_HAPTICS = true
     const val DEFAULT_ENABLE_TARGET_SOUND = true
+    const val DEFAULT_ENABLE_TOO_HEAVY_SOUND = true
+    const val DEFAULT_ENABLE_TOO_LIGHT_SOUND = true
+    const val DEFAULT_ENABLE_BACK_ON_TARGET_SOUND = true
     const val DEFAULT_SHOW_GRIP_STATS = true
     const val DEFAULT_SHOW_SET_REVIEW = false
     const val DEFAULT_SHOW_STATUS_BAR = true

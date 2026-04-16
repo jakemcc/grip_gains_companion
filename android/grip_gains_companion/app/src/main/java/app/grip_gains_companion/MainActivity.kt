@@ -28,7 +28,9 @@ import app.grip_gains_companion.ui.screens.SettingsScreen
 import app.grip_gains_companion.ui.theme.GripGainsTheme
 import app.grip_gains_companion.util.AppLogger
 import app.grip_gains_companion.util.HapticManager
+import app.grip_gains_companion.util.TargetSoundSettings
 import app.grip_gains_companion.util.ToneGenerator
+import app.grip_gains_companion.util.playEnabledTargetTone
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
@@ -269,26 +271,23 @@ class MainActivity : ComponentActivity() {
         lifecycleScope.launch {
             progressorHandler.targetFeedbackEvents.collect { event ->
                 val enableHaptics = preferencesRepository.enableHaptics.first()
-                val enableSound = preferencesRepository.enableTargetSound.first()
+                val soundSettings = TargetSoundSettings(
+                    masterEnabled = preferencesRepository.enableTargetSound.first(),
+                    tooHeavyEnabled = preferencesRepository.enableTooHeavySound.first(),
+                    tooLightEnabled = preferencesRepository.enableTooLightSound.first(),
+                    backOnTargetEnabled = preferencesRepository.enableBackOnTargetSound.first()
+                )
                 
                 if (enableHaptics && event is TargetFeedbackEvent.OffTarget) {
                     hapticManager.warning()
                 }
                 
-                if (enableSound) {
-                    when (event) {
-                        is TargetFeedbackEvent.OffTarget -> {
-                            if (event.direction > 0) {
-                                ToneGenerator.playHighTone() // Too heavy
-                            } else {
-                                ToneGenerator.playLowTone() // Too light
-                            }
-                        }
-                        TargetFeedbackEvent.BackOnTarget -> {
-                            ToneGenerator.playOnTargetTone()
-                        }
-                    }
-                }
+                event.playEnabledTargetTone(
+                    settings = soundSettings,
+                    playHigh = ToneGenerator::playHighTone,
+                    playLow = ToneGenerator::playLowTone,
+                    playOnTarget = ToneGenerator::playOnTargetTone
+                )
             }
         }
         
