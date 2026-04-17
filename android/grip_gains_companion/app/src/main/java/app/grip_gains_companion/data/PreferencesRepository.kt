@@ -31,6 +31,7 @@ class PreferencesRepository(private val context: Context) {
         val ENABLE_TOO_HEAVY_SOUND = booleanPreferencesKey("enable_too_heavy_sound")
         val ENABLE_TOO_LIGHT_SOUND = booleanPreferencesKey("enable_too_light_sound")
         val ENABLE_BACK_ON_TARGET_SOUND = booleanPreferencesKey("enable_back_on_target_sound")
+        val ENABLE_TIMER_COUNTDOWN_SOUND = booleanPreferencesKey("enable_timer_countdown_sound")
         val SHOW_STATUS_BAR = booleanPreferencesKey("show_status_bar")
         val EXPANDED_FORCE_BAR = booleanPreferencesKey("expanded_force_bar")
         val SHOW_FORCE_GRAPH = booleanPreferencesKey("show_force_graph")
@@ -102,6 +103,11 @@ class PreferencesRepository(private val context: Context) {
         it[Keys.ENABLE_BACK_ON_TARGET_SOUND] ?: AppConstants.DEFAULT_ENABLE_BACK_ON_TARGET_SOUND
     }
     suspend fun setEnableBackOnTargetSound(value: Boolean) = context.dataStore.edit { it[Keys.ENABLE_BACK_ON_TARGET_SOUND] = value }
+
+    val enableTimerCountdownSound: Flow<Boolean> = context.dataStore.data.map {
+        it[Keys.ENABLE_TIMER_COUNTDOWN_SOUND] ?: AppConstants.DEFAULT_ENABLE_TIMER_COUNTDOWN_SOUND
+    }
+    suspend fun setEnableTimerCountdownSound(value: Boolean) = context.dataStore.edit { it[Keys.ENABLE_TIMER_COUNTDOWN_SOUND] = value }
     
     // Display preferences
     val showStatusBar: Flow<Boolean> = context.dataStore.data.map { 

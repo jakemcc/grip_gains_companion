@@ -26,11 +26,12 @@ import app.grip_gains_companion.ui.screens.LogViewerScreen
 import app.grip_gains_companion.ui.screens.MainScreen
 import app.grip_gains_companion.ui.screens.SettingsScreen
 import app.grip_gains_companion.ui.theme.GripGainsTheme
-import app.grip_gains_companion.util.AppLogger
+import app.grip_gains_companion.util.CountdownSound
 import app.grip_gains_companion.util.HapticManager
 import app.grip_gains_companion.util.TargetSoundSettings
 import app.grip_gains_companion.util.ToneGenerator
 import app.grip_gains_companion.util.playEnabledTargetTone
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
@@ -41,6 +42,7 @@ class MainActivity : ComponentActivity() {
     private lateinit var webViewBridge: WebViewBridge
     private lateinit var preferencesRepository: PreferencesRepository
     private lateinit var hapticManager: HapticManager
+    private val countdownSound = CountdownSound(playSecond = ToneGenerator::playCountdownTone)
     
     private val requiredPermissions: Array<String>
         get() = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
@@ -308,6 +310,21 @@ class MainActivity : ComponentActivity() {
                     progressorHandler.targetWeight = weight
                 }
             }
+        }
+
+        // Timer countdown sound for pre-start and rest timers.
+        lifecycleScope.launch {
+            webViewBridge.remainingTime
+                .combine(webViewBridge.buttonEnabled) { remainingTime, failButtonEnabled ->
+                    remainingTime to failButtonEnabled
+                }
+                .collect { (remainingTime, failButtonEnabled) ->
+                    if (preferencesRepository.enableTimerCountdownSound.first() && !failButtonEnabled) {
+                        countdownSound.onRemainingTimeChanged(remainingTime)
+                    } else {
+                        countdownSound.onRemainingTimeChanged(null)
+                    }
+                }
         }
     }
     

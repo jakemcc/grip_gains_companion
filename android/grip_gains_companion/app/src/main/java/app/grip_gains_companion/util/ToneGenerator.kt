@@ -4,7 +4,6 @@ import android.media.AudioAttributes
 import android.media.AudioFormat
 import android.media.AudioTrack
 import kotlin.math.PI
-import kotlin.math.min
 import kotlin.math.sin
 
 /**
@@ -40,6 +39,18 @@ object ToneGenerator {
      */
     fun playOnTargetTone() {
         playTone(frequency = 660.0, durationMs = 120) // E5
+    }
+
+    /**
+     * Play a timer countdown tone with distinct cues near the end.
+     */
+    fun playCountdownTone(second: Int) {
+        when (second) {
+            0 -> playTone(frequency = 1320.0, durationMs = 300) // E6
+            1 -> playTone(frequency = 1174.66, durationMs = 240) // D6
+            2 -> playTone(frequency = 660.0, durationMs = 180) // E5
+            else -> playTone(frequency = 880.0, durationMs = 120) // A5
+        }
     }
     
     /**
