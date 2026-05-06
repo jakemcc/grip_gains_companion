@@ -136,23 +136,37 @@ object JavaScriptBridge {
      */
     val observerScript = """
         (function() {
-            function setupObserver() {
+            if (window.__gripGainsCompanionButtonObserverInstalled) {
+                if (window.__gripGainsCompanionRefreshButtonState) {
+                    window.__gripGainsCompanionRefreshButtonState();
+                }
+                return;
+            }
+            window.__gripGainsCompanionButtonObserverInstalled = true;
+
+            function sendButtonState() {
                 const button = document.querySelector('button.btn-fail-prominent');
-                if (!button) {
+                Android.onButtonStateChanged(!!button && !button.disabled);
+            }
+
+            window.__gripGainsCompanionRefreshButtonState = sendButtonState;
+
+            function setupObserver() {
+                if (!document.body) {
                     setTimeout(setupObserver, 100);
                     return;
                 }
 
-                const observer = new MutationObserver(function() {
-                    Android.onButtonStateChanged(!button.disabled);
-                });
+                const observer = new MutationObserver(sendButtonState);
 
-                observer.observe(button, {
+                observer.observe(document.body, {
+                    childList: true,
+                    subtree: true,
                     attributes: true,
                     attributeFilter: ['disabled', 'class']
                 });
 
-                Android.onButtonStateChanged(!button.disabled);
+                sendButtonState();
             }
 
             if (document.readyState === 'loading') {
@@ -185,6 +199,14 @@ object JavaScriptBridge {
      */
     val targetWeightObserverScript = """
         (function() {
+            if (window.__gripGainsCompanionTargetObserverInstalled) {
+                if (window.__gripGainsCompanionScrapeTargetValues) {
+                    window.__gripGainsCompanionScrapeTargetValues();
+                }
+                return;
+            }
+            window.__gripGainsCompanionTargetObserverInstalled = true;
+
             function scrapeAndSendValues() {
                 const elements = document.querySelectorAll('.session-preview-header .text-white');
                 let foundWeight = false;
@@ -220,21 +242,32 @@ object JavaScriptBridge {
                 Android.onSessionInfoChanged(gripper, side);
             }
 
+            window.__gripGainsCompanionScrapeTargetValues = scrapeAndSendValues;
+
+            let scrapeScheduled = false;
+            function scheduleScrapeAndSendValues() {
+                if (scrapeScheduled) return;
+                scrapeScheduled = true;
+                setTimeout(function() {
+                    scrapeScheduled = false;
+                    scrapeAndSendValues();
+                }, 50);
+            }
+
             function setupTargetObserver() {
-                const previewHeader = document.querySelector('.session-preview-header');
-                if (!previewHeader) {
+                if (!document.body) {
                     setTimeout(setupTargetObserver, 500);
                     return;
                 }
 
-                const observer = new MutationObserver(function() {
-                    scrapeAndSendValues();
-                });
+                const observer = new MutationObserver(scheduleScrapeAndSendValues);
 
-                observer.observe(previewHeader, {
+                observer.observe(document.body, {
                     childList: true,
                     subtree: true,
-                    characterData: true
+                    characterData: true,
+                    attributes: true,
+                    attributeFilter: ['class']
                 });
 
                 scrapeAndSendValues();
@@ -394,6 +427,14 @@ object JavaScriptBridge {
      */
     val remainingTimeObserverScript = """
         (function() {
+            if (window.__gripGainsCompanionRemainingTimeObserverInstalled) {
+                if (window.__gripGainsCompanionScrapeRemainingTime) {
+                    window.__gripGainsCompanionScrapeRemainingTime();
+                }
+                return;
+            }
+            window.__gripGainsCompanionRemainingTimeObserverInstalled = true;
+
             function scrapeAndSendRemainingTime() {
                 const timerValue = document.querySelector('.timer-value');
                 if (!timerValue) {
@@ -417,29 +458,31 @@ object JavaScriptBridge {
                 }
             }
 
+            window.__gripGainsCompanionScrapeRemainingTime = scrapeAndSendRemainingTime;
+
+            let scrapeScheduled = false;
+            function scheduleRemainingTimeScrape() {
+                if (scrapeScheduled) return;
+                scrapeScheduled = true;
+                setTimeout(function() {
+                    scrapeScheduled = false;
+                    scrapeAndSendRemainingTime();
+                }, 50);
+            }
+
             function setupRemainingTimeObserver() {
-                const timerValue = document.querySelector('.timer-value');
-                if (!timerValue) {
+                if (!document.body) {
                     setTimeout(setupRemainingTimeObserver, 200);
                     return;
                 }
 
-                const observer = new MutationObserver(function() {
-                    scrapeAndSendRemainingTime();
-                });
+                const observer = new MutationObserver(scheduleRemainingTimeScrape);
 
-                observer.observe(timerValue, {
+                observer.observe(document.body, {
                     childList: true,
                     subtree: true,
                     characterData: true
                 });
-
-                if (timerValue.parentElement) {
-                    observer.observe(timerValue.parentElement, {
-                        childList: true,
-                        subtree: true
-                    });
-                }
 
                 scrapeAndSendRemainingTime();
             }
