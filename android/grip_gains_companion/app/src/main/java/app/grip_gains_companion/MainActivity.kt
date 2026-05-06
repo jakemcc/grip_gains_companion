@@ -4,6 +4,7 @@ import android.Manifest
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
+import android.speech.tts.TextToSpeech
 import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -34,6 +35,7 @@ import app.grip_gains_companion.util.playEnabledTargetTone
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import java.util.Locale
 
 class MainActivity : ComponentActivity() {
     
@@ -43,6 +45,8 @@ class MainActivity : ComponentActivity() {
     private lateinit var preferencesRepository: PreferencesRepository
     private lateinit var hapticManager: HapticManager
     private val countdownSound = CountdownSound(playSecond = ToneGenerator::playCountdownTone)
+    private var textToSpeech: TextToSpeech? = null
+    private var textToSpeechReady = false
     
     private val requiredPermissions: Array<String>
         get() = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
@@ -82,6 +86,12 @@ class MainActivity : ComponentActivity() {
         webViewBridge = WebViewBridge()
         preferencesRepository = PreferencesRepository(this)
         hapticManager = HapticManager(this)
+        textToSpeech = TextToSpeech(this) { status ->
+            if (status == TextToSpeech.SUCCESS) {
+                textToSpeech?.language = Locale.US
+                textToSpeechReady = true
+            }
+        }
         
         // Auto-detect unit preference on first launch
         lifecycleScope.launch {
@@ -133,15 +143,44 @@ class MainActivity : ComponentActivity() {
             var skippedDevice by remember { mutableStateOf(false) }
             var showSettings by remember { mutableStateOf(false) }
             var showLogViewer by remember { mutableStateOf(false) }
+            var activeGripReconnect by remember { mutableStateOf(false) }
             
             // Haptic feedback on connect
             LaunchedEffect(connectionState) {
-                if (connectionState == ConnectionState.Connected && enableHaptics) {
-                    hapticManager.success()
-                }
-                // Only reset if truly disconnected (not reconnecting)
-                if (connectionState == ConnectionState.Disconnected) {
-                    progressorHandler.reset()
+                when (connectionState) {
+                    ConnectionState.Reconnecting -> {
+                        if (progressorHandler.engaged && !activeGripReconnect) {
+                            activeGripReconnect = true
+                            progressorHandler.onConnectionLost()
+                            speakStatus("Disconnected")
+                            if (enableHaptics) {
+                                hapticManager.warning()
+                            }
+                        }
+                    }
+                    ConnectionState.Connected -> {
+                        if (activeGripReconnect) {
+                            progressorHandler.onConnectionRestored()
+                            speakStatus("Connected")
+                            activeGripReconnect = false
+                        }
+                        if (enableHaptics) {
+                            hapticManager.success()
+                        }
+                    }
+                    ConnectionState.Disconnected -> {
+                        if (progressorHandler.engaged && !activeGripReconnect) {
+                            activeGripReconnect = true
+                            progressorHandler.onConnectionLost()
+                            speakStatus("Disconnected")
+                            if (enableHaptics) {
+                                hapticManager.warning()
+                            }
+                        } else if (!activeGripReconnect) {
+                            progressorHandler.reset()
+                        }
+                    }
+                    else -> {}
                 }
             }
             
@@ -333,9 +372,22 @@ class MainActivity : ComponentActivity() {
             ContextCompat.checkSelfPermission(this, permission) == PackageManager.PERMISSION_GRANTED
         }
     }
+
+    private fun speakStatus(text: String) {
+        if (!textToSpeechReady) return
+
+        textToSpeech?.speak(
+            text,
+            TextToSpeech.QUEUE_FLUSH,
+            null,
+            "connection-status-$text"
+        )
+    }
     
     override fun onDestroy() {
         super.onDestroy()
         bluetoothManager.disconnect()
+        textToSpeech?.shutdown()
+        textToSpeech = null
     }
 }

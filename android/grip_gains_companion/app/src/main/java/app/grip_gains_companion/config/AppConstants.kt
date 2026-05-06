@@ -23,6 +23,7 @@ object AppConstants {
     const val MIN_WEIGHT_TOLERANCE = 0.1      // kg
     const val MAX_WEIGHT_TOLERANCE = 1.0      // kg
     const val OFF_TARGET_FEEDBACK_INTERVAL_MS = 1000L  // milliseconds (throttle)
+    const val RECONNECT_GRACE_PERIOD_MS = 2000L
 
     // MARK: - Percentage-Based Thresholds
     const val DEFAULT_ENABLE_PERCENTAGE_THRESHOLDS = true

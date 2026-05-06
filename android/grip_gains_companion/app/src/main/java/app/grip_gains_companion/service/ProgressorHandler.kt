@@ -90,6 +90,9 @@ class ProgressorHandler {
     private var firstDeviceTimestamp: Long? = null
     private var firstDisplayTimestamp: Date? = null
     private var lastOffTargetFeedbackTimestampMicros: Long? = null
+    private var lostConnectionDuringGrip = false
+    private var awaitingReconnectGraceStart = false
+    private var reconnectGraceUntilTimestamp: Long? = null
     
     // Convenience properties
     val engaged: Boolean get() = _state.value.isEngaged
@@ -205,6 +208,21 @@ class ProgressorHandler {
     fun recalibrate() {
         resetCommonState()
     }
+
+    fun onConnectionLost() {
+        if (_state.value is ProgressorState.Gripping) {
+            lostConnectionDuringGrip = true
+            reconnectGraceUntilTimestamp = null
+            awaitingReconnectGraceStart = false
+            stopOffTargetTimer()
+        }
+    }
+
+    fun onConnectionRestored() {
+        if (lostConnectionDuringGrip && _state.value is ProgressorState.Gripping) {
+            awaitingReconnectGraceStart = true
+        }
+    }
     
     private fun resetCommonState() {
         stopOffTargetTimer()
@@ -218,6 +236,9 @@ class ProgressorHandler {
         _forceHistory.value = emptyList()
         firstDeviceTimestamp = null
         firstDisplayTimestamp = null
+        lostConnectionDuringGrip = false
+        awaitingReconnectGraceStart = false
+        reconnectGraceUntilTimestamp = null
     }
     
     // MARK: - State Machine Logic
@@ -268,8 +289,15 @@ class ProgressorHandler {
             }
             
             is ProgressorState.Gripping -> {
-                val newSamples = currentState.samples + sample
                 val taredWeight = rawWeight - currentState.baselineValue
+
+                val isInReconnectGrace = isInReconnectGrace(timestamp)
+                if (isInReconnectGrace && taredWeight < effectiveFailThreshold) {
+                    _state.value = currentState
+                    return
+                }
+
+                val newSamples = currentState.samples + sample
                 
                 // Calculate live statistics using tared weights
                 val taredWeights = newSamples.map { it.weight - currentState.baselineValue }
@@ -291,7 +319,9 @@ class ProgressorHandler {
                         currentState.startTimestamp,
                         newSamples
                     )
-                    checkOffTarget(taredWeight, timestamp)
+                    if (!isInReconnectGrace) {
+                        checkOffTarget(taredWeight, timestamp)
+                    }
                 }
             }
             
@@ -403,5 +433,21 @@ class ProgressorHandler {
     
     private fun stopOffTargetTimer() {
         lastOffTargetFeedbackTimestampMicros = null
+    }
+
+    private fun isInReconnectGrace(timestamp: Long): Boolean {
+        if (awaitingReconnectGraceStart) {
+            reconnectGraceUntilTimestamp = timestamp + AppConstants.RECONNECT_GRACE_PERIOD_MS * 1_000
+            awaitingReconnectGraceStart = false
+        }
+
+        val graceUntil = reconnectGraceUntilTimestamp ?: return false
+        if (timestamp <= graceUntil) {
+            return true
+        }
+
+        reconnectGraceUntilTimestamp = null
+        lostConnectionDuringGrip = false
+        return false
     }
 }

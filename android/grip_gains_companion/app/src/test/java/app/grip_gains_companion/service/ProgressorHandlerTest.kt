@@ -106,6 +106,64 @@ class ProgressorHandlerTest {
         assertTrue(timedOut)
     }
 
+    @Test
+    fun keepsActiveGripStateDuringReconnectGraceWindow() = runBlocking {
+        val handler = ProgressorHandler().apply {
+            enableCalibration = false
+            canEngage = true
+            enablePercentageThresholds = false
+            engageThreshold = 3.0
+            failThreshold = 1.0
+        }
+
+        val failedDeferred = CompletableDeferred<Unit>()
+        val collectionJob = collectGripFailures(this, handler, failedDeferred)
+
+        handler.processSample(rawWeight = 0.0, timestamp = 0L)
+        handler.processSample(rawWeight = 10.0, timestamp = 1_000_000L)
+        handler.onConnectionLost()
+        handler.onConnectionRestored()
+        handler.processSample(rawWeight = 0.0, timestamp = 1_500_000L)
+
+        val timedOut = try {
+            withTimeout(250) { failedDeferred.await() }
+            false
+        } catch (_: TimeoutCancellationException) {
+            true
+        }
+        collectionJob.cancel()
+
+        assertTrue(handler.engaged)
+        assertEquals(0.0, handler.state.value.baseline, 0.0)
+        assertTrue(timedOut)
+    }
+
+    @Test
+    fun resumesFailureDetectionAfterReconnectGraceWindow() = runBlocking {
+        val handler = ProgressorHandler().apply {
+            enableCalibration = false
+            canEngage = true
+            enablePercentageThresholds = false
+            engageThreshold = 3.0
+            failThreshold = 1.0
+        }
+
+        val failedDeferred = CompletableDeferred<Unit>()
+        val collectionJob = collectGripFailures(this, handler, failedDeferred)
+
+        handler.processSample(rawWeight = 0.0, timestamp = 0L)
+        handler.processSample(rawWeight = 10.0, timestamp = 1_000_000L)
+        handler.onConnectionLost()
+        handler.onConnectionRestored()
+        handler.processSample(rawWeight = 0.0, timestamp = 1_500_000L)
+        handler.processSample(rawWeight = 0.0, timestamp = 4_100_000L)
+
+        withTimeout(2_000) { failedDeferred.await() }
+        collectionJob.cancel()
+
+        assertTrue(!handler.engaged)
+    }
+
     private fun collectTargetFeedbackEvents(
         scope: kotlinx.coroutines.CoroutineScope,
         handler: ProgressorHandler,
@@ -118,6 +176,20 @@ class ProgressorHandlerTest {
                 collected += event
                 if (collected.size == expectedCount && !eventsDeferred.isCompleted) {
                     eventsDeferred.complete(collected.toList())
+                }
+            }
+        }
+    }
+
+    private fun collectGripFailures(
+        scope: kotlinx.coroutines.CoroutineScope,
+        handler: ProgressorHandler,
+        failedDeferred: CompletableDeferred<Unit>
+    ): Job {
+        return scope.launch(start = CoroutineStart.UNDISPATCHED) {
+            handler.gripFailed.collect {
+                if (!failedDeferred.isCompleted) {
+                    failedDeferred.complete(Unit)
                 }
             }
         }
