@@ -4,6 +4,8 @@ import android.Manifest
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.speech.tts.TextToSpeech
 import android.view.WindowManager
 import androidx.activity.ComponentActivity
@@ -18,6 +20,7 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
 import app.grip_gains_companion.data.PreferencesRepository
 import app.grip_gains_companion.model.ConnectionState
+import app.grip_gains_companion.service.BackgroundInactivityShutdownTimer
 import app.grip_gains_companion.service.ProgressorHandler
 import app.grip_gains_companion.service.TargetFeedbackEvent
 import app.grip_gains_companion.service.ble.BluetoothManager
@@ -45,6 +48,14 @@ class MainActivity : ComponentActivity() {
     private lateinit var preferencesRepository: PreferencesRepository
     private lateinit var hapticManager: HapticManager
     private val countdownSound = CountdownSound(playSecond = ToneGenerator::playCountdownTone)
+    private val mainHandler = Handler(Looper.getMainLooper())
+    private val backgroundInactivityShutdownTimer by lazy {
+        BackgroundInactivityShutdownTimer(
+            postDelayed = { runnable, delayMs -> mainHandler.postDelayed(runnable, delayMs) },
+            removeCallbacks = { runnable -> mainHandler.removeCallbacks(runnable) },
+            shutdown = { bluetoothManager.disconnect(preserveAutoReconnect = true) }
+        )
+    }
     private var textToSpeech: TextToSpeech? = null
     private var textToSpeechReady = false
     
@@ -383,9 +394,27 @@ class MainActivity : ComponentActivity() {
             "connection-status-$text"
         )
     }
+
+    override fun onStart() {
+        super.onStart()
+        if (::bluetoothManager.isInitialized) {
+            backgroundInactivityShutdownTimer.onEnteredForeground()
+            if (hasAllPermissions() && bluetoothManager.connectionState.value == ConnectionState.Disconnected) {
+                bluetoothManager.startScanning()
+            }
+        }
+    }
+
+    override fun onStop() {
+        super.onStop()
+        if (::bluetoothManager.isInitialized) {
+            backgroundInactivityShutdownTimer.onEnteredBackground()
+        }
+    }
     
     override fun onDestroy() {
         super.onDestroy()
+        backgroundInactivityShutdownTimer.onEnteredForeground()
         bluetoothManager.disconnect()
         textToSpeech?.shutdown()
         textToSpeech = null

@@ -97,6 +97,7 @@ object AppConstants {
 
     // MARK: - BLE Commands
     val PROGRESSOR_START_WEIGHT_COMMAND = byteArrayOf(101)
+    val PROGRESSOR_SHUTDOWN_COMMAND = byteArrayOf(0x6E.toByte())
     // PitchSix Device Mode commands (write to Device Mode Characteristic)
     val PITCH_SIX_MODE_STREAMING = byteArrayOf(0x04)  // Continuous streaming mode
     val PITCH_SIX_MODE_TARE = byteArrayOf(0x05)       // Tare via Device Mode
@@ -141,6 +142,7 @@ object AppConstants {
     const val DISCOVERY_TIMEOUT_MS = 30000L
     const val MAX_RETRY_DELAY_MS = 30000L
     const val BACKGROUND_INACTIVITY_TIMEOUT_MS = 300000L  // 5 minutes
+    const val TINDEQ_SHUTDOWN_ACK_TIMEOUT_MS = 1000L
 
     // MARK: - Unit Conversion
     const val KG_TO_LBS = 2.20462

@@ -9,6 +9,7 @@ import android.bluetooth.BluetoothGattCharacteristic
 import android.bluetooth.BluetoothGattDescriptor
 import android.bluetooth.BluetoothManager
 import android.bluetooth.BluetoothProfile
+import android.bluetooth.BluetoothStatusCodes
 import android.bluetooth.le.BluetoothLeScanner
 import android.bluetooth.le.ScanCallback
 import android.bluetooth.le.ScanResult
@@ -59,6 +60,10 @@ class BluetoothManager(private val context: Context) {
     private var pitchSixDeviceModeCharacteristic: BluetoothGattCharacteristic? = null
 
     private val handler = Handler(Looper.getMainLooper())
+    private val tindeqShutdownCoordinator = TindeqShutdownCoordinator(
+        postDelayed = { runnable, delayMs -> handler.postDelayed(runnable, delayMs) },
+        removeCallbacks = { runnable -> handler.removeCallbacks(runnable) }
+    )
     private var retryCount = 0
     private var pendingDevice: ForceDevice? = null
     private var shouldAutoReconnect = true
@@ -276,9 +281,19 @@ class BluetoothManager(private val context: Context) {
 
         shouldAutoReconnect = false
         cancelRetryTimer()
-        pendingDevice = null
 
         stopScanning()
+
+        val deviceType = _connectedDeviceType.value ?: pendingDevice?.type
+        tindeqShutdownCoordinator.disconnect(
+            deviceType = deviceType,
+            sendShutdownCommand = ::sendProgressorShutdownCommand,
+            disconnect = { finishDisconnect(preserveAutoReconnect) }
+        )
+    }
+
+    private fun finishDisconnect(preserveAutoReconnect: Boolean) {
+        pendingDevice = null
 
         // Stop device-specific services
         pitchSixService?.stop()
@@ -443,6 +458,8 @@ class BluetoothManager(private val context: Context) {
             characteristic: BluetoothGattCharacteristic,
             status: Int
         ) {
+            tindeqShutdownCoordinator.onWriteComplete(characteristic.uuid)
+
             if (status == BluetoothGatt.GATT_SUCCESS) {
                 AppLogger.i(TAG, "Write successful to ${characteristic.uuid}")
                 Log.i(TAG, "Write successful")
@@ -476,28 +493,47 @@ class BluetoothManager(private val context: Context) {
     }
 
     private fun startProgressorMeasurement() {
-        val characteristic = writeCharacteristic ?: run {
+        if (writeCharacteristic == null) {
             Log.e(TAG, "Write characteristic not available")
             return
         }
 
         Log.i(TAG, "Sending start weight command...")
+        if (!writeProgressorCommand(AppConstants.PROGRESSOR_START_WEIGHT_COMMAND)) {
+            Log.e(TAG, "Failed to queue start weight command")
+        }
+    }
+
+    private fun sendProgressorShutdownCommand(command: ByteArray): Boolean {
+        if (writeCharacteristic == null) {
+            Log.e(TAG, "Write characteristic not available for shutdown")
+            return false
+        }
+
+        Log.i(TAG, "Sending Tindeq shutdown command...")
+        return writeProgressorCommand(command)
+    }
+
+    private fun writeProgressorCommand(command: ByteArray): Boolean {
+        val characteristic = writeCharacteristic ?: return false
+        val gatt = bluetoothGatt ?: return false
+
         // Use appropriate API based on Android version
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             // API 33+: new method signature
-            bluetoothGatt?.writeCharacteristic(
+            gatt.writeCharacteristic(
                 characteristic,
-                AppConstants.PROGRESSOR_START_WEIGHT_COMMAND,
+                command,
                 BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT
-            )
+            ) == BluetoothStatusCodes.SUCCESS
         } else {
             // API < 33: old method signature
             @Suppress("DEPRECATION")
-            characteristic.value = AppConstants.PROGRESSOR_START_WEIGHT_COMMAND
+            characteristic.value = command
             @Suppress("DEPRECATION")
             characteristic.writeType = BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT
             @Suppress("DEPRECATION")
-            bluetoothGatt?.writeCharacteristic(characteristic)
+            gatt.writeCharacteristic(characteristic)
         }
     }
 
