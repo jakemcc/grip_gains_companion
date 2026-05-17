@@ -20,7 +20,7 @@ DEBUG_KEY_PASSWORD := android
 export ANDROID_HOME
 export ANDROID_SDK_ROOT
 
-.PHONY: help devices test test-unit test-shutdown test-connected test-all assemble release bundle-release verify install install-release push-release run clean
+.PHONY: help devices test test-unit test-connected test-all assemble release bundle-release verify install install-release push-release run clean
 
 help: ## Show available targets
 	@grep -E '^[a-zA-Z_-]+:.*## ' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*## "}; {printf "\033[36m%-16s\033[0m %s\n", $$1, $$2}'
@@ -33,9 +33,6 @@ test: ## Run unit tests
 
 test-unit: ## Run unit tests
 	$(GRADLEW) testDebugUnitTest
-
-test-shutdown: ## Run Tindeq shutdown and background inactivity unit tests
-	$(GRADLEW) testDebugUnitTest --tests app.grip_gains_companion.service.BackgroundInactivityShutdownTimerTest --tests app.grip_gains_companion.service.ble.TindeqShutdownCoordinatorTest
 
 test-connected: ## Run connected Android tests; set SERIAL=<device-id> when needed
 	$(if $(SERIAL),ANDROID_SERIAL=$(SERIAL) )$(GRADLEW) connectedDebugAndroidTest
