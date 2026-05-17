@@ -20,16 +20,22 @@ DEBUG_KEY_PASSWORD := android
 export ANDROID_HOME
 export ANDROID_SDK_ROOT
 
-.PHONY: help test test-unit test-connected test-all assemble release bundle-release verify install install-release run clean
+.PHONY: help devices test test-unit test-shutdown test-connected test-all assemble release bundle-release verify install install-release push-release run clean
 
 help: ## Show available targets
 	@grep -E '^[a-zA-Z_-]+:.*## ' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*## "}; {printf "\033[36m%-16s\033[0m %s\n", $$1, $$2}'
+
+devices: ## List connected Android devices
+	$(ADB) devices -l
 
 test: ## Run unit tests
 	$(GRADLEW) testDebugUnitTest
 
 test-unit: ## Run unit tests
 	$(GRADLEW) testDebugUnitTest
+
+test-shutdown: ## Run Tindeq shutdown and background inactivity unit tests
+	$(GRADLEW) testDebugUnitTest --tests app.grip_gains_companion.service.BackgroundInactivityShutdownTimerTest --tests app.grip_gains_companion.service.ble.TindeqShutdownCoordinatorTest
 
 test-connected: ## Run connected Android tests; set SERIAL=<device-id> when needed
 	$(if $(SERIAL),ANDROID_SERIAL=$(SERIAL) )$(GRADLEW) connectedDebugAndroidTest
@@ -58,6 +64,8 @@ install-release: ## Build and install the release app; set SERIAL=<device-id> wh
 	$(GRADLEW) assembleRelease
 	$(APKSIGNER) sign --ks $(DEBUG_KEYSTORE) --ks-key-alias $(DEBUG_KEY_ALIAS) --ks-pass pass:$(DEBUG_KEY_PASSWORD) --key-pass pass:$(DEBUG_KEY_PASSWORD) --out $(SIGNED_RELEASE_APK) $(RELEASE_APK)
 	$(ADB) $(SERIAL_ARG) install -r $(SIGNED_RELEASE_APK)
+
+push-release: install-release ## Alias for building and installing the release app
 
 run: ## Launch the app; set SERIAL=<device-id> when needed
 	$(ADB) $(SERIAL_ARG) shell am start -n $(MAIN_ACTIVITY)
