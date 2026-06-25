@@ -50,6 +50,7 @@ fun SettingsScreen(
     val enableTooLightSound by preferencesRepository.enableTooLightSound.collectAsStateWithLifecycle(initialValue = true)
     val enableBackOnTargetSound by preferencesRepository.enableBackOnTargetSound.collectAsStateWithLifecycle(initialValue = true)
     val enableTimerCountdownSound by preferencesRepository.enableTimerCountdownSound.collectAsStateWithLifecycle(initialValue = true)
+    val mutePhoneDuringGrip by preferencesRepository.mutePhoneDuringGrip.collectAsStateWithLifecycle(initialValue = false)
     val showStatusBar by preferencesRepository.showStatusBar.collectAsStateWithLifecycle(initialValue = true)
     val expandedForceBar by preferencesRepository.expandedForceBar.collectAsStateWithLifecycle(initialValue = true)
     val showForceGraph by preferencesRepository.showForceGraph.collectAsStateWithLifecycle(initialValue = true)
@@ -272,6 +273,12 @@ fun SettingsScreen(
                     title = "Timer Countdown Sound",
                     checked = enableTimerCountdownSound,
                     onCheckedChange = { scope.launch { preferencesRepository.setEnableTimerCountdownSound(it) } }
+                )
+
+                SwitchPreference(
+                    title = "Mute Phone During Grip",
+                    checked = mutePhoneDuringGrip,
+                    onCheckedChange = { scope.launch { preferencesRepository.setMutePhoneDuringGrip(it) } }
                 )
 
                 TonePreviewAction.entries.forEach { action ->

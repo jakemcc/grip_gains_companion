@@ -52,6 +52,7 @@ object AppConstants {
     const val DEFAULT_ENABLE_TOO_LIGHT_SOUND = true
     const val DEFAULT_ENABLE_BACK_ON_TARGET_SOUND = true
     const val DEFAULT_ENABLE_TIMER_COUNTDOWN_SOUND = true
+    const val DEFAULT_MUTE_PHONE_DURING_GRIP = false
     const val DEFAULT_SHOW_GRIP_STATS = true
     const val DEFAULT_SHOW_STATUS_BAR = true
     const val DEFAULT_EXPANDED_FORCE_BAR = true

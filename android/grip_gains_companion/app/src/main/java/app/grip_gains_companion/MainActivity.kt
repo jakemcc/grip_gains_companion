@@ -20,6 +20,7 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
 import app.grip_gains_companion.data.PreferencesRepository
 import app.grip_gains_companion.model.ConnectionState
+import app.grip_gains_companion.model.ProgressorState
 import app.grip_gains_companion.service.BackgroundInactivityShutdownTimer
 import app.grip_gains_companion.service.ProgressorHandler
 import app.grip_gains_companion.service.TargetFeedbackEvent
@@ -30,7 +31,9 @@ import app.grip_gains_companion.ui.screens.LogViewerScreen
 import app.grip_gains_companion.ui.screens.MainScreen
 import app.grip_gains_companion.ui.screens.SettingsScreen
 import app.grip_gains_companion.ui.theme.GripGainsTheme
+import app.grip_gains_companion.util.AudioManagerGripPeriodVolumeAccess
 import app.grip_gains_companion.util.CountdownSound
+import app.grip_gains_companion.util.GripPeriodVolumeMuter
 import app.grip_gains_companion.util.HapticManager
 import app.grip_gains_companion.util.TargetSoundSettings
 import app.grip_gains_companion.util.ToneGenerator
@@ -47,6 +50,7 @@ class MainActivity : ComponentActivity() {
     private lateinit var webViewBridge: WebViewBridge
     private lateinit var preferencesRepository: PreferencesRepository
     private lateinit var hapticManager: HapticManager
+    private lateinit var gripPeriodVolumeMuter: GripPeriodVolumeMuter
     private val countdownSound = CountdownSound(playSecond = ToneGenerator::playCountdownTone)
     private val mainHandler = Handler(Looper.getMainLooper())
     private val backgroundInactivityShutdownTimer by lazy {
@@ -97,6 +101,7 @@ class MainActivity : ComponentActivity() {
         webViewBridge = WebViewBridge()
         preferencesRepository = PreferencesRepository(this)
         hapticManager = HapticManager(this)
+        gripPeriodVolumeMuter = GripPeriodVolumeMuter(AudioManagerGripPeriodVolumeAccess(this))
         textToSpeech = TextToSpeech(this) { status ->
             if (status == TextToSpeech.SUCCESS) {
                 textToSpeech?.language = Locale.US
@@ -376,6 +381,19 @@ class MainActivity : ComponentActivity() {
                     }
                 }
         }
+
+        lifecycleScope.launch {
+            progressorHandler.state
+                .combine(preferencesRepository.mutePhoneDuringGrip) { state, mutePhoneDuringGrip ->
+                    (state is ProgressorState.Gripping) to mutePhoneDuringGrip
+                }
+                .collect { (isGripActive, mutePhoneDuringGrip) ->
+                    gripPeriodVolumeMuter.onGripActiveChanged(
+                        isGripActive = isGripActive,
+                        enabled = mutePhoneDuringGrip
+                    )
+                }
+        }
     }
     
     private fun hasAllPermissions(): Boolean {
@@ -415,6 +433,9 @@ class MainActivity : ComponentActivity() {
     override fun onDestroy() {
         super.onDestroy()
         backgroundInactivityShutdownTimer.onEnteredForeground()
+        if (::gripPeriodVolumeMuter.isInitialized) {
+            gripPeriodVolumeMuter.restoreIfNeeded()
+        }
         bluetoothManager.disconnect()
         textToSpeech?.shutdown()
         textToSpeech = null

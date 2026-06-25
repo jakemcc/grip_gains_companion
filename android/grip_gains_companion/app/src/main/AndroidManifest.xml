@@ -20,6 +20,9 @@
     
     <!-- Vibration for haptic feedback -->
     <uses-permission android:name="android.permission.VIBRATE" />
+
+    <!-- Adjust media volume during active grip periods -->
+    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
     
     <!-- Keep screen on -->
     <uses-permission android:name="android.permission.WAKE_LOCK" />
