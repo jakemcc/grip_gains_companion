@@ -2,6 +2,7 @@ package app.grip_gains_companion.util
 
 import android.content.Context
 import android.media.AudioManager
+import android.os.SystemClock
 
 interface GripPeriodVolumeAccess {
     val currentVolume: Int
@@ -25,17 +26,23 @@ class AudioManagerGripPeriodVolumeAccess(context: Context) : GripPeriodVolumeAcc
 }
 
 class GripPeriodVolumeMuter(
-    private val volumeAccess: GripPeriodVolumeAccess
+    private val volumeAccess: GripPeriodVolumeAccess,
+    private val nowMillis: () -> Long = SystemClock::elapsedRealtime
 ) {
+    private var gripStartedAtMillis: Long? = null
     private var volumeBeforeMute: Int? = null
 
     fun onGripActiveChanged(isGripActive: Boolean, enabled: Boolean) {
         if (!enabled || !isGripActive) {
+            gripStartedAtMillis = null
             restoreIfNeeded()
             return
         }
 
-        if (volumeBeforeMute == null) {
+        val startedAt = gripStartedAtMillis ?: nowMillis().also {
+            gripStartedAtMillis = it
+        }
+        if (volumeBeforeMute == null && nowMillis() - startedAt >= MUTE_DELAY_MS) {
             volumeBeforeMute = volumeAccess.currentVolume
             volumeAccess.mute()
         }
@@ -45,5 +52,9 @@ class GripPeriodVolumeMuter(
         val volume = volumeBeforeMute ?: return
         volumeBeforeMute = null
         volumeAccess.restore(volume)
+    }
+
+    private companion object {
+        const val MUTE_DELAY_MS = 4_000L
     }
 }
