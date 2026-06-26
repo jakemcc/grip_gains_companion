@@ -149,6 +149,7 @@ class MainActivity : ComponentActivity() {
             val enableHaptics by preferencesRepository.enableHaptics.collectAsState(initial = true)
             val enableTargetSound by preferencesRepository.enableTargetSound.collectAsState(initial = true)
             val enableCalibration by preferencesRepository.enableCalibration.collectAsState(initial = true)
+            val mutePhoneDuringGrip by preferencesRepository.mutePhoneDuringGrip.collectAsState(initial = false)
             
             // Update handler settings
             LaunchedEffect(enableCalibration) {
@@ -253,7 +254,13 @@ class MainActivity : ComponentActivity() {
                                 useManualTarget = useManualTarget,
                                 manualTargetWeight = manualTargetWeight,
                                 weightTolerance = weightTolerance,
+                                mutePhoneDuringGrip = mutePhoneDuringGrip,
                                 onSettingsTap = { showSettings = true },
+                                onMutePhoneDuringGripToggle = {
+                                    lifecycleScope.launch {
+                                        preferencesRepository.setMutePhoneDuringGrip(!mutePhoneDuringGrip)
+                                    }
+                                },
                                 onUnitToggle = {
                                     lifecycleScope.launch {
                                         preferencesRepository.setUseLbs(!useLbs)

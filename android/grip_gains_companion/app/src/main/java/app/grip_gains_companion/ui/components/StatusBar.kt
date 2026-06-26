@@ -5,6 +5,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.VolumeOff
+import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -37,7 +39,9 @@ fun StatusBar(
     useLbs: Boolean,
     expanded: Boolean,
     deviceShortName: String = "device",
+    mutePhoneDuringGrip: Boolean,
     onUnitToggle: () -> Unit,
+    onMutePhoneDuringGripToggle: () -> Unit,
     onSettingsTap: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -65,6 +69,8 @@ fun StatusBar(
                 sessionStdDev = sessionStdDev,
                 useLbs = useLbs,
                 onUnitToggle = onUnitToggle,
+                mutePhoneDuringGrip = mutePhoneDuringGrip,
+                onMutePhoneDuringGripToggle = onMutePhoneDuringGripToggle,
                 onSettingsTap = onSettingsTap
             )
         } else {
@@ -82,6 +88,8 @@ fun StatusBar(
                 sessionStdDev = sessionStdDev,
                 useLbs = useLbs,
                 onUnitToggle = onUnitToggle,
+                mutePhoneDuringGrip = mutePhoneDuringGrip,
+                onMutePhoneDuringGripToggle = onMutePhoneDuringGripToggle,
                 onSettingsTap = onSettingsTap
             )
         }
@@ -113,6 +121,8 @@ private fun CompactLayout(
     sessionStdDev: Double?,
     useLbs: Boolean,
     onUnitToggle: () -> Unit,
+    mutePhoneDuringGrip: Boolean,
+    onMutePhoneDuringGripToggle: () -> Unit,
     onSettingsTap: () -> Unit
 ) {
     Row(
@@ -153,6 +163,11 @@ private fun CompactLayout(
             waitingForSamples = waitingForSamples,
             calibrationTimeRemaining = calibrationTimeRemaining
         )
+
+        GripMuteToggleButton(
+            mutePhoneDuringGrip = mutePhoneDuringGrip,
+            onClick = onMutePhoneDuringGripToggle
+        )
         
         // Settings button
         IconButton(onClick = onSettingsTap, modifier = Modifier.size(32.dp)) {
@@ -180,6 +195,8 @@ private fun ExpandedLayout(
     sessionStdDev: Double?,
     useLbs: Boolean,
     onUnitToggle: () -> Unit,
+    mutePhoneDuringGrip: Boolean,
+    onMutePhoneDuringGripToggle: () -> Unit,
     onSettingsTap: () -> Unit
 ) {
     // Top row: measured weight on left, badge and settings on right
@@ -206,6 +223,11 @@ private fun ExpandedLayout(
         )
         
         Spacer(modifier = Modifier.width(8.dp))
+
+        GripMuteToggleButton(
+            mutePhoneDuringGrip = mutePhoneDuringGrip,
+            onClick = onMutePhoneDuringGripToggle
+        )
         
         IconButton(onClick = onSettingsTap, modifier = Modifier.size(32.dp)) {
             Icon(
@@ -246,6 +268,21 @@ private fun ExpandedLayout(
             isOffTarget = isOffTarget,
             offTargetDirection = offTargetDirection,
             useLbs = useLbs
+        )
+    }
+}
+
+@Composable
+private fun GripMuteToggleButton(
+    mutePhoneDuringGrip: Boolean,
+    onClick: () -> Unit
+) {
+    val visualState = gripMuteToggleVisualState(mutePhoneDuringGrip)
+    IconButton(onClick = onClick, modifier = Modifier.size(32.dp)) {
+        Icon(
+            imageVector = if (mutePhoneDuringGrip) Icons.AutoMirrored.Filled.VolumeOff else Icons.AutoMirrored.Filled.VolumeUp,
+            contentDescription = visualState.contentDescription,
+            tint = MaterialTheme.colorScheme.onSurfaceVariant
         )
     }
 }

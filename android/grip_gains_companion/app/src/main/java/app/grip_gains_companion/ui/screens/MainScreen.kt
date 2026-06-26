@@ -2,6 +2,8 @@ package app.grip_gains_companion.ui.screens
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.VolumeOff
+import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -14,6 +16,7 @@ import app.grip_gains_companion.service.ProgressorHandler
 import app.grip_gains_companion.service.ble.BluetoothManager
 import app.grip_gains_companion.service.web.WebViewBridge
 import app.grip_gains_companion.ui.components.ForceGraph
+import app.grip_gains_companion.ui.components.gripMuteToggleVisualState
 import app.grip_gains_companion.ui.components.StatusBar
 import app.grip_gains_companion.ui.components.TimerWebView
 
@@ -35,7 +38,9 @@ fun MainScreen(
     useManualTarget: Boolean,
     manualTargetWeight: Double,
     weightTolerance: Double,
+    mutePhoneDuringGrip: Boolean,
     onSettingsTap: () -> Unit,
+    onMutePhoneDuringGripToggle: () -> Unit,
     onUnitToggle: () -> Unit
 ) {
     val connectionState by bluetoothManager.connectionState.collectAsState()
@@ -87,7 +92,9 @@ fun MainScreen(
                     useLbs = useLbs,
                     expanded = expandedForceBar,
                     deviceShortName = selectedDeviceType.shortName,
+                    mutePhoneDuringGrip = mutePhoneDuringGrip,
                     onUnitToggle = onUnitToggle,
+                    onMutePhoneDuringGripToggle = onMutePhoneDuringGripToggle,
                     onSettingsTap = onSettingsTap
                 )
             }
@@ -115,20 +122,38 @@ fun MainScreen(
         
         // Floating settings button (when status bar is hidden)
         if (!isConnected || !showStatusBar) {
-            FloatingActionButton(
-                onClick = onSettingsTap,
+            Row(
                 modifier = Modifier
                     .align(Alignment.TopEnd)
-                    .padding(16.dp)
-                    .size(40.dp),
-                containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.9f),
-                contentColor = MaterialTheme.colorScheme.onSurfaceVariant
+                    .padding(16.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                Icon(
-                    imageVector = Icons.Default.Settings,
-                    contentDescription = "Settings",
-                    modifier = Modifier.size(20.dp)
-                )
+                val muteVisualState = gripMuteToggleVisualState(mutePhoneDuringGrip)
+                FloatingActionButton(
+                    onClick = onMutePhoneDuringGripToggle,
+                    modifier = Modifier.size(40.dp),
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.9f),
+                    contentColor = MaterialTheme.colorScheme.onSurfaceVariant
+                ) {
+                    Icon(
+                        imageVector = if (mutePhoneDuringGrip) Icons.AutoMirrored.Filled.VolumeOff else Icons.AutoMirrored.Filled.VolumeUp,
+                        contentDescription = muteVisualState.contentDescription,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+
+                FloatingActionButton(
+                    onClick = onSettingsTap,
+                    modifier = Modifier.size(40.dp),
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.9f),
+                    contentColor = MaterialTheme.colorScheme.onSurfaceVariant
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Settings,
+                        contentDescription = "Settings",
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
             }
         }
     }
