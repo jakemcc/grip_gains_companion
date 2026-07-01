@@ -16,7 +16,9 @@ import app.grip_gains_companion.service.ProgressorHandler
 import app.grip_gains_companion.service.ble.BluetoothManager
 import app.grip_gains_companion.service.web.WebViewBridge
 import app.grip_gains_companion.ui.components.ForceGraph
+import app.grip_gains_companion.ui.components.QuickAction
 import app.grip_gains_companion.ui.components.gripMuteToggleVisualState
+import app.grip_gains_companion.ui.components.gripQuickActionLayout
 import app.grip_gains_companion.ui.components.StatusBar
 import app.grip_gains_companion.ui.components.TimerWebView
 
@@ -120,41 +122,53 @@ fun MainScreen(
             )
         }
         
-        // Floating settings button (when status bar is hidden)
+        // Floating quick actions (when status bar is hidden)
         if (!isConnected || !showStatusBar) {
-            Row(
+            val quickActions = gripQuickActionLayout()
+            FloatingQuickAction(
+                action = quickActions.leading,
+                mutePhoneDuringGrip = mutePhoneDuringGrip,
+                onMutePhoneDuringGripToggle = onMutePhoneDuringGripToggle,
+                onSettingsTap = onSettingsTap,
+                modifier = Modifier
+                    .align(Alignment.TopStart)
+                    .padding(16.dp)
+            )
+            FloatingQuickAction(
+                action = quickActions.trailing,
+                mutePhoneDuringGrip = mutePhoneDuringGrip,
+                onMutePhoneDuringGripToggle = onMutePhoneDuringGripToggle,
+                onSettingsTap = onSettingsTap,
                 modifier = Modifier
                     .align(Alignment.TopEnd)
-                    .padding(16.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                val muteVisualState = gripMuteToggleVisualState(mutePhoneDuringGrip)
-                FloatingActionButton(
-                    onClick = onMutePhoneDuringGripToggle,
-                    modifier = Modifier.size(40.dp),
-                    containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.9f),
-                    contentColor = MaterialTheme.colorScheme.onSurfaceVariant
-                ) {
-                    Icon(
-                        imageVector = if (mutePhoneDuringGrip) Icons.AutoMirrored.Filled.VolumeOff else Icons.AutoMirrored.Filled.VolumeUp,
-                        contentDescription = muteVisualState.contentDescription,
-                        modifier = Modifier.size(20.dp)
-                    )
-                }
-
-                FloatingActionButton(
-                    onClick = onSettingsTap,
-                    modifier = Modifier.size(40.dp),
-                    containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.9f),
-                    contentColor = MaterialTheme.colorScheme.onSurfaceVariant
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Settings,
-                        contentDescription = "Settings",
-                        modifier = Modifier.size(20.dp)
-                    )
-                }
-            }
+                    .padding(16.dp)
+            )
         }
+    }
+}
+
+@Composable
+private fun FloatingQuickAction(
+    action: QuickAction,
+    mutePhoneDuringGrip: Boolean,
+    onMutePhoneDuringGripToggle: () -> Unit,
+    onSettingsTap: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val muteVisualState = gripMuteToggleVisualState(mutePhoneDuringGrip)
+    FloatingActionButton(
+        onClick = if (action == QuickAction.MUTE) onMutePhoneDuringGripToggle else onSettingsTap,
+        modifier = modifier.size(40.dp),
+        containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.9f),
+        contentColor = MaterialTheme.colorScheme.onSurfaceVariant
+    ) {
+        Icon(
+            imageVector = when (action) {
+                QuickAction.MUTE -> if (mutePhoneDuringGrip) Icons.AutoMirrored.Filled.VolumeOff else Icons.AutoMirrored.Filled.VolumeUp
+                QuickAction.SETTINGS -> Icons.Default.Settings
+            },
+            contentDescription = if (action == QuickAction.MUTE) muteVisualState.contentDescription else "Settings",
+            modifier = Modifier.size(20.dp)
+        )
     }
 }

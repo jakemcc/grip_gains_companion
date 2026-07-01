@@ -125,11 +125,19 @@ private fun CompactLayout(
     onMutePhoneDuringGripToggle: () -> Unit,
     onSettingsTap: () -> Unit
 ) {
+    val quickActions = gripQuickActionLayout()
     Row(
         modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
+        QuickActionButton(
+            action = quickActions.leading,
+            mutePhoneDuringGrip = mutePhoneDuringGrip,
+            onMutePhoneDuringGripToggle = onMutePhoneDuringGripToggle,
+            onSettingsTap = onSettingsTap
+        )
+
         // Force display
         Text(
             text = WeightFormatter.format(force, useLbs),
@@ -164,19 +172,12 @@ private fun CompactLayout(
             calibrationTimeRemaining = calibrationTimeRemaining
         )
 
-        GripMuteToggleButton(
+        QuickActionButton(
+            action = quickActions.trailing,
             mutePhoneDuringGrip = mutePhoneDuringGrip,
-            onClick = onMutePhoneDuringGripToggle
+            onMutePhoneDuringGripToggle = onMutePhoneDuringGripToggle,
+            onSettingsTap = onSettingsTap
         )
-        
-        // Settings button
-        IconButton(onClick = onSettingsTap, modifier = Modifier.size(32.dp)) {
-            Icon(
-                imageVector = Icons.Default.Settings,
-                contentDescription = "Settings",
-                tint = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
     }
 }
 
@@ -199,11 +200,21 @@ private fun ExpandedLayout(
     onMutePhoneDuringGripToggle: () -> Unit,
     onSettingsTap: () -> Unit
 ) {
-    // Top row: measured weight on left, badge and settings on right
+    val quickActions = gripQuickActionLayout()
+    // Top row: mute on left, badge and settings on right
     Row(
         modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically
     ) {
+        QuickActionButton(
+            action = quickActions.leading,
+            mutePhoneDuringGrip = mutePhoneDuringGrip,
+            onMutePhoneDuringGripToggle = onMutePhoneDuringGripToggle,
+            onSettingsTap = onSettingsTap
+        )
+
+        Spacer(modifier = Modifier.width(8.dp))
+
         // Measured weight
         if (weightMedian != null && !engaged) {
             Text(
@@ -224,18 +235,12 @@ private fun ExpandedLayout(
         
         Spacer(modifier = Modifier.width(8.dp))
 
-        GripMuteToggleButton(
+        QuickActionButton(
+            action = quickActions.trailing,
             mutePhoneDuringGrip = mutePhoneDuringGrip,
-            onClick = onMutePhoneDuringGripToggle
+            onMutePhoneDuringGripToggle = onMutePhoneDuringGripToggle,
+            onSettingsTap = onSettingsTap
         )
-        
-        IconButton(onClick = onSettingsTap, modifier = Modifier.size(32.dp)) {
-            Icon(
-                imageVector = Icons.Default.Settings,
-                contentDescription = "Settings",
-                tint = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
     }
     
     // Center: giant force number
@@ -273,17 +278,30 @@ private fun ExpandedLayout(
 }
 
 @Composable
-private fun GripMuteToggleButton(
+private fun QuickActionButton(
+    action: QuickAction,
     mutePhoneDuringGrip: Boolean,
-    onClick: () -> Unit
+    onMutePhoneDuringGripToggle: () -> Unit,
+    onSettingsTap: () -> Unit
 ) {
-    val visualState = gripMuteToggleVisualState(mutePhoneDuringGrip)
-    IconButton(onClick = onClick, modifier = Modifier.size(32.dp)) {
-        Icon(
-            imageVector = if (mutePhoneDuringGrip) Icons.AutoMirrored.Filled.VolumeOff else Icons.AutoMirrored.Filled.VolumeUp,
-            contentDescription = visualState.contentDescription,
-            tint = MaterialTheme.colorScheme.onSurfaceVariant
-        )
+    when (action) {
+        QuickAction.MUTE -> {
+            val visualState = gripMuteToggleVisualState(mutePhoneDuringGrip)
+            IconButton(onClick = onMutePhoneDuringGripToggle, modifier = Modifier.size(32.dp)) {
+                Icon(
+                    imageVector = if (mutePhoneDuringGrip) Icons.AutoMirrored.Filled.VolumeOff else Icons.AutoMirrored.Filled.VolumeUp,
+                    contentDescription = visualState.contentDescription,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+        QuickAction.SETTINGS -> IconButton(onClick = onSettingsTap, modifier = Modifier.size(32.dp)) {
+            Icon(
+                imageVector = Icons.Default.Settings,
+                contentDescription = "Settings",
+                tint = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
     }
 }
 

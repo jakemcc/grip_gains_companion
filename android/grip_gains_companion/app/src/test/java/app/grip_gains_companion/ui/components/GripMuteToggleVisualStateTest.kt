@@ -6,6 +6,12 @@ import org.junit.Test
 class GripMuteToggleVisualStateTest {
 
     @Test
+    fun placesMuteAndSettingsAtOppositeEnds() {
+        assertEquals(QuickAction.MUTE, gripQuickActionLayout().leading)
+        assertEquals(QuickAction.SETTINGS, gripQuickActionLayout().trailing)
+    }
+
+    @Test
     fun describesEnabledMuteState() {
         val state = gripMuteToggleVisualState(mutePhoneDuringGrip = true)
 
