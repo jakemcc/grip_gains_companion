@@ -73,3 +73,4 @@ run: ## Launch the app; set SERIAL=<device-id> when needed
 
 clean: ## Remove Gradle build outputs
 	$(GRADLEW) clean
+	rm -rf $(RELEASE_OUTPUT_APK)
