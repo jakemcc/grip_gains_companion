@@ -1,7 +1,7 @@
 SHELL := /bin/bash
 .DEFAULT_GOAL := help
 
-APP_ID := app.grip_gains_auto
+APP_ID := app.grip_gains_companion
 MAIN_ACTIVITY := $(APP_ID)/.MainActivity
 ANDROID_HOME ?= $(HOME)/Library/Android/sdk
 ANDROID_SDK_ROOT ?= $(ANDROID_HOME)
