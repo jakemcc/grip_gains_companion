@@ -31,6 +31,7 @@ class PreferencesRepository(private val context: Context) {
         val ENABLE_TOO_HEAVY_SOUND = booleanPreferencesKey("enable_too_heavy_sound")
         val ENABLE_TOO_LIGHT_SOUND = booleanPreferencesKey("enable_too_light_sound")
         val ENABLE_BACK_ON_TARGET_SOUND = booleanPreferencesKey("enable_back_on_target_sound")
+        val ENABLE_SPOKEN_DIRECTIONS = booleanPreferencesKey("enable_spoken_directions")
         val ENABLE_TIMER_COUNTDOWN_SOUND = booleanPreferencesKey("enable_timer_countdown_sound")
         val MUTE_PHONE_DURING_GRIP = booleanPreferencesKey("mute_phone_during_grip")
         val SHOW_STATUS_BAR = booleanPreferencesKey("show_status_bar")
@@ -102,6 +103,11 @@ class PreferencesRepository(private val context: Context) {
         it[Keys.ENABLE_BACK_ON_TARGET_SOUND] ?: AppConstants.DEFAULT_ENABLE_BACK_ON_TARGET_SOUND
     }
     suspend fun setEnableBackOnTargetSound(value: Boolean) = context.dataStore.edit { it[Keys.ENABLE_BACK_ON_TARGET_SOUND] = value }
+
+    val enableSpokenDirections: Flow<Boolean> = context.dataStore.data.map {
+        it[Keys.ENABLE_SPOKEN_DIRECTIONS] ?: AppConstants.DEFAULT_ENABLE_SPOKEN_DIRECTIONS
+    }
+    suspend fun setEnableSpokenDirections(value: Boolean) = context.dataStore.edit { it[Keys.ENABLE_SPOKEN_DIRECTIONS] = value }
 
     val enableTimerCountdownSound: Flow<Boolean> = context.dataStore.data.map {
         it[Keys.ENABLE_TIMER_COUNTDOWN_SOUND] ?: AppConstants.DEFAULT_ENABLE_TIMER_COUNTDOWN_SOUND

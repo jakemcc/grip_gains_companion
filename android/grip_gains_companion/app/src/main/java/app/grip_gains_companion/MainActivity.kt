@@ -37,7 +37,8 @@ import app.grip_gains_companion.util.GripPeriodVolumeMuter
 import app.grip_gains_companion.util.HapticManager
 import app.grip_gains_companion.util.TargetSoundSettings
 import app.grip_gains_companion.util.ToneGenerator
-import app.grip_gains_companion.util.playEnabledTargetTone
+import app.grip_gains_companion.util.playEnabledTargetFeedback
+import app.grip_gains_companion.util.playTargetFeedbackPreview
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
@@ -236,6 +237,16 @@ class MainActivity : ComponentActivity() {
                                 onViewLogs = {
                                     showSettings = false
                                     showLogViewer = true
+                                },
+                                onPreviewTargetFeedback = { action, spokenDirectionsEnabled ->
+                                    action.playTargetFeedbackPreview(
+                                        spokenDirectionsEnabled = spokenDirectionsEnabled,
+                                        playWarning = ToneGenerator::playWarningTone,
+                                        playHigh = ToneGenerator::playHighTone,
+                                        playLow = ToneGenerator::playLowTone,
+                                        playOnTarget = ToneGenerator::playOnTargetTone,
+                                        speak = ::speakTargetDirection
+                                    )
                                 }
                             )
                         }
@@ -339,18 +350,20 @@ class MainActivity : ComponentActivity() {
                     masterEnabled = preferencesRepository.enableTargetSound.first(),
                     tooHeavyEnabled = preferencesRepository.enableTooHeavySound.first(),
                     tooLightEnabled = preferencesRepository.enableTooLightSound.first(),
-                    backOnTargetEnabled = preferencesRepository.enableBackOnTargetSound.first()
+                    backOnTargetEnabled = preferencesRepository.enableBackOnTargetSound.first(),
+                    spokenDirectionsEnabled = preferencesRepository.enableSpokenDirections.first()
                 )
                 
                 if (enableHaptics && event is TargetFeedbackEvent.OffTarget) {
                     hapticManager.warning()
                 }
                 
-                event.playEnabledTargetTone(
+                event.playEnabledTargetFeedback(
                     settings = soundSettings,
                     playHigh = ToneGenerator::playHighTone,
                     playLow = ToneGenerator::playLowTone,
-                    playOnTarget = ToneGenerator::playOnTargetTone
+                    playOnTarget = ToneGenerator::playOnTargetTone,
+                    speak = ::speakTargetDirection
                 )
             }
         }
@@ -410,14 +423,22 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun speakStatus(text: String) {
-        if (!textToSpeechReady) return
+        speak(text, "connection-status-$text")
+    }
 
-        textToSpeech?.speak(
+    private fun speakTargetDirection(text: String): Boolean {
+        return speak(text, "target-direction")
+    }
+
+    private fun speak(text: String, utteranceId: String): Boolean {
+        if (!textToSpeechReady) return false
+
+        return textToSpeech?.speak(
             text,
             TextToSpeech.QUEUE_FLUSH,
             null,
-            "connection-status-$text"
-        )
+            utteranceId
+        ) == TextToSpeech.SUCCESS
     }
 
     override fun onStart() {

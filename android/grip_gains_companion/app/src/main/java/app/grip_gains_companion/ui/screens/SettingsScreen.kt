@@ -20,7 +20,6 @@ import app.grip_gains_companion.service.ble.BluetoothManager
 import app.grip_gains_companion.service.web.WebViewBridge
 import app.grip_gains_companion.util.TonePreviewAction
 import app.grip_gains_companion.util.WeightFormatter
-import app.grip_gains_companion.util.playTonePreview
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 
@@ -34,7 +33,8 @@ fun SettingsScreen(
     onDisconnect: () -> Unit,
     onConnectDevice: () -> Unit,
     onRecalibrate: () -> Unit,
-    onViewLogs: () -> Unit
+    onViewLogs: () -> Unit,
+    onPreviewTargetFeedback: (TonePreviewAction, Boolean) -> Unit
 ) {
     val scope = rememberCoroutineScope()
     val connectionState by bluetoothManager.connectionState.collectAsStateWithLifecycle()
@@ -49,6 +49,7 @@ fun SettingsScreen(
     val enableTooHeavySound by preferencesRepository.enableTooHeavySound.collectAsStateWithLifecycle(initialValue = true)
     val enableTooLightSound by preferencesRepository.enableTooLightSound.collectAsStateWithLifecycle(initialValue = true)
     val enableBackOnTargetSound by preferencesRepository.enableBackOnTargetSound.collectAsStateWithLifecycle(initialValue = true)
+    val enableSpokenDirections by preferencesRepository.enableSpokenDirections.collectAsStateWithLifecycle(initialValue = true)
     val enableTimerCountdownSound by preferencesRepository.enableTimerCountdownSound.collectAsStateWithLifecycle(initialValue = true)
     val mutePhoneDuringGrip by preferencesRepository.mutePhoneDuringGrip.collectAsStateWithLifecycle(initialValue = false)
     val showStatusBar by preferencesRepository.showStatusBar.collectAsStateWithLifecycle(initialValue = true)
@@ -270,6 +271,12 @@ fun SettingsScreen(
                 )
 
                 SwitchPreference(
+                    title = "Spoken directions",
+                    checked = enableSpokenDirections,
+                    onCheckedChange = { scope.launch { preferencesRepository.setEnableSpokenDirections(it) } }
+                )
+
+                SwitchPreference(
                     title = "Timer Countdown Sound",
                     checked = enableTimerCountdownSound,
                     onCheckedChange = { scope.launch { preferencesRepository.setEnableTimerCountdownSound(it) } }
@@ -283,10 +290,10 @@ fun SettingsScreen(
 
                 TonePreviewAction.entries.forEach { action ->
                     ListItem(
-                        headlineContent = { Text(action.previewTitle) },
-                        supportingContent = { Text(action.previewDescription) },
+                        headlineContent = { Text(action.previewTitle(enableSpokenDirections)) },
+                        supportingContent = { Text(action.previewDescription(enableSpokenDirections)) },
                         leadingContent = { Icon(Icons.Default.PlayArrow, contentDescription = null) },
-                        modifier = Modifier.clickableRow { playTonePreview(action) }
+                        modifier = Modifier.clickableRow { onPreviewTargetFeedback(action, enableSpokenDirections) }
                     )
                 }
                 
@@ -597,18 +604,16 @@ private fun Modifier.clickableRow(onClick: () -> Unit): Modifier {
     return this.clickable(onClick = onClick)
 }
 
-private val TonePreviewAction.previewTitle: String
-    get() = when (this) {
+private fun TonePreviewAction.previewTitle(spokenDirectionsEnabled: Boolean): String = when (this) {
         TonePreviewAction.Warning -> "Play Warning Tone"
-        TonePreviewAction.TooHeavy -> "Play Too Heavy Tone"
-        TonePreviewAction.TooLight -> "Play Too Light Tone"
+        TonePreviewAction.TooHeavy -> if (spokenDirectionsEnabled) "Play \"Less\"" else "Play Too Heavy Tone"
+        TonePreviewAction.TooLight -> if (spokenDirectionsEnabled) "Play \"More\"" else "Play Too Light Tone"
         TonePreviewAction.BackOnTarget -> "Play Back-on-Target Tone"
     }
 
-private val TonePreviewAction.previewDescription: String
-    get() = when (this) {
+private fun TonePreviewAction.previewDescription(spokenDirectionsEnabled: Boolean): String = when (this) {
         TonePreviewAction.Warning -> "General alert tone."
-        TonePreviewAction.TooHeavy -> "Higher pitch for force above target."
-        TonePreviewAction.TooLight -> "Lower pitch for force below target."
+        TonePreviewAction.TooHeavy -> if (spokenDirectionsEnabled) "Says \"Less\" when force is above target." else "Higher pitch for force above target."
+        TonePreviewAction.TooLight -> if (spokenDirectionsEnabled) "Says \"More\" when force is below target." else "Lower pitch for force below target."
         TonePreviewAction.BackOnTarget -> "Confirmation tone for returning within tolerance."
     }

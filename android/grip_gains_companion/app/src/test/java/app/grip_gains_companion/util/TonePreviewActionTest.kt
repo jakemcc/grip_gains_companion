@@ -6,6 +6,25 @@ import org.junit.Test
 class TonePreviewActionTest {
 
     @Test
+    fun tooHeavyPreviewSpeaksLessWhenSpokenDirectionsAreEnabled() {
+        val calls = mutableListOf<String>()
+
+        TonePreviewAction.TooHeavy.playTargetFeedbackPreview(
+            spokenDirectionsEnabled = true,
+            playWarning = { calls += "warning" },
+            playHigh = { calls += "high" },
+            playLow = { calls += "low" },
+            playOnTarget = { calls += "on-target" },
+            speak = {
+                calls += it
+                true
+            }
+        )
+
+        assertEquals(listOf("Less"), calls)
+    }
+
+    @Test
     fun warningPreviewUsesWarningTone() {
         val calls = mutableListOf<String>()
 

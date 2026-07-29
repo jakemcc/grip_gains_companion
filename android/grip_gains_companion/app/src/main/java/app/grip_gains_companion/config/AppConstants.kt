@@ -51,6 +51,7 @@ object AppConstants {
     const val DEFAULT_ENABLE_TOO_HEAVY_SOUND = true
     const val DEFAULT_ENABLE_TOO_LIGHT_SOUND = true
     const val DEFAULT_ENABLE_BACK_ON_TARGET_SOUND = true
+    const val DEFAULT_ENABLE_SPOKEN_DIRECTIONS = true
     const val DEFAULT_ENABLE_TIMER_COUNTDOWN_SOUND = true
     const val DEFAULT_MUTE_PHONE_DURING_GRIP = false
     const val DEFAULT_SHOW_GRIP_STATS = true
