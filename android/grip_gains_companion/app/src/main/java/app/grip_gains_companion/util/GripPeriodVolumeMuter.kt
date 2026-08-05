@@ -10,18 +10,23 @@ interface GripPeriodVolumeAccess {
     fun restore(volume: Int)
 }
 
+object GripAudioRouting {
+    const val MUTED_PHONE_AUDIO_STREAM = AudioManager.STREAM_MUSIC
+    const val TARGET_GUIDANCE_STREAM = AudioManager.STREAM_ALARM
+}
+
 class AudioManagerGripPeriodVolumeAccess(context: Context) : GripPeriodVolumeAccess {
     private val audioManager = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
 
     override val currentVolume: Int
-        get() = audioManager.getStreamVolume(AudioManager.STREAM_MUSIC)
+        get() = audioManager.getStreamVolume(GripAudioRouting.MUTED_PHONE_AUDIO_STREAM)
 
     override fun mute() {
-        audioManager.setStreamVolume(AudioManager.STREAM_MUSIC, 0, 0)
+        audioManager.setStreamVolume(GripAudioRouting.MUTED_PHONE_AUDIO_STREAM, 0, 0)
     }
 
     override fun restore(volume: Int) {
-        audioManager.setStreamVolume(AudioManager.STREAM_MUSIC, volume, 0)
+        audioManager.setStreamVolume(GripAudioRouting.MUTED_PHONE_AUDIO_STREAM, volume, 0)
     }
 }
 

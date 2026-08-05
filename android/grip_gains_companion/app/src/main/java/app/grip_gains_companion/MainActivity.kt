@@ -33,6 +33,7 @@ import app.grip_gains_companion.ui.screens.SettingsScreen
 import app.grip_gains_companion.ui.theme.GripGainsTheme
 import app.grip_gains_companion.util.AudioManagerGripPeriodVolumeAccess
 import app.grip_gains_companion.util.CountdownSound
+import app.grip_gains_companion.util.GripAudioRouting
 import app.grip_gains_companion.util.GripPeriodVolumeMuter
 import app.grip_gains_companion.util.HapticManager
 import app.grip_gains_companion.util.TargetSoundSettings
@@ -427,16 +428,25 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun speakTargetDirection(text: String): Boolean {
-        return speak(text, "target-direction")
+        return speak(
+            text = text,
+            utteranceId = "target-direction",
+            audioStream = GripAudioRouting.TARGET_GUIDANCE_STREAM
+        )
     }
 
-    private fun speak(text: String, utteranceId: String): Boolean {
+    private fun speak(text: String, utteranceId: String, audioStream: Int? = null): Boolean {
         if (!textToSpeechReady) return false
 
+        val params = audioStream?.let { stream ->
+            Bundle().apply {
+                putInt(TextToSpeech.Engine.KEY_PARAM_STREAM, stream)
+            }
+        }
         return textToSpeech?.speak(
             text,
             TextToSpeech.QUEUE_FLUSH,
-            null,
+            params,
             utteranceId
         ) == TextToSpeech.SUCCESS
     }
