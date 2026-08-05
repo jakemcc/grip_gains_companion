@@ -6,6 +6,29 @@ import app.grip_gains_companion.config.AppConstants
  * JavaScript code snippets for interacting with the gripgains.ca web UI
  */
 object JavaScriptBridge {
+
+    /**
+     * Keep the mobile navigation drawer scrollable when the native force UI
+     * reduces the WebView height. Without this, the fixed drawer lets scroll
+     * gestures move the document behind it instead.
+     */
+    val mobileNavigationScrollFixScript = """
+        (function() {
+            const styleId = 'grip-gains-companion-mobile-menu-scroll';
+            if (document.getElementById(styleId)) return;
+
+            const style = document.createElement('style');
+            style.id = styleId;
+            style.textContent = `
+                [class~="lg:hidden"][class~="fixed"][class~="inset-0"] > [class~="w-64"][class~="h-full"] {
+                    overflow-y: auto !important;
+                    overscroll-behavior-y: contain;
+                    -webkit-overflow-scrolling: touch;
+                }
+            `;
+            document.head.appendChild(style);
+        })();
+    """.trimIndent()
     
     /**
      * Close the weight picker if it's open on page load

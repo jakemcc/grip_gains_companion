@@ -61,6 +61,7 @@ fun TimerWebView(
                     // Inject scripts after page loads
                     view?.evaluateJavascript(JavaScriptBridge.backgroundTimeOffsetScript, null)
                     view?.evaluateJavascript(JavaScriptBridge.closePickerOnLoadScript, null)
+                    view?.evaluateJavascript(JavaScriptBridge.mobileNavigationScrollFixScript, null)
                     view?.evaluateJavascript(JavaScriptBridge.observerScript, null)
                     view?.evaluateJavascript(JavaScriptBridge.targetWeightObserverScript, null)
                     view?.evaluateJavascript(JavaScriptBridge.remainingTimeObserverScript, null)

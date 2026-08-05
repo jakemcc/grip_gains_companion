@@ -6,6 +6,22 @@ import org.junit.Test
 class JavaScriptBridgeTest {
 
     @Test
+    fun mobileNavigationDrawerOwnsVerticalScrolling() {
+        val script = JavaScriptBridge.mobileNavigationScrollFixScript
+
+        assertTrue(
+            script.contains(
+                "[class~=\"lg:hidden\"][class~=\"fixed\"][class~=\"inset-0\"] > " +
+                    "[class~=\"w-64\"][class~=\"h-full\"]"
+            )
+        )
+        assertTrue(script.contains("overflow-y: auto"))
+        assertTrue(script.contains("overscroll-behavior-y: contain"))
+        assertTrue(script.contains("-webkit-overflow-scrolling: touch"))
+        assertTrue(script.contains("document.getElementById(styleId)"))
+    }
+
+    @Test
     fun observerScriptsWatchDocumentBodySoTheySurviveReplacedTimerNodes() {
         val scripts = listOf(
             JavaScriptBridge.observerScript,
