@@ -21,7 +21,7 @@ DEBUG_KEY_PASSWORD := android
 export ANDROID_HOME
 export ANDROID_SDK_ROOT
 
-.PHONY: help devices test test-unit test-connected test-all assemble release signed-release bundle-release verify install install-release push-release run clean
+.PHONY: help devices test test-unit test-connected test-all assemble release signed-release bundle-release verify install install-release push-release run bump-version clean
 
 help: ## Show available targets
 	@grep -E '^[a-zA-Z_-]+:.*## ' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*## "}; {printf "\033[36m%-16s\033[0m %s\n", $$1, $$2}'
@@ -53,6 +53,10 @@ signed-release: release ## Build the signed release APK as grip-gains-auto.apk
 
 bundle-release: ## Build the release app bundle
 	$(GRADLEW) bundleRelease
+
+bump-version: ## Increment versionCode and set versionName to match it
+	@perl -0pi -e 's/(versionCode = )(\d+)(\n\s*versionName = ")[^"]*"/$$1 . ($$2 + 1) . $$3 . ($$2 + 1) . q{"}/e' app/build.gradle.kts
+	@grep -E 'version(Code|Name) = ' app/build.gradle.kts
 
 verify: ## Run the standard verification command for this project
 	$(GRADLEW) testDebugUnitTest assembleDebug
