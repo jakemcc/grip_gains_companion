@@ -5,6 +5,7 @@ import app.grip_gains_companion.model.ForceHistoryEntry
 import app.grip_gains_companion.model.ProgressorState
 import app.grip_gains_companion.model.TimestampedSample
 import app.grip_gains_companion.util.StatisticsUtils
+import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -57,7 +58,10 @@ class ProgressorHandler {
     private val _gripDisengaged = MutableSharedFlow<Pair<Double, List<Double>>>()
     val gripDisengaged = _gripDisengaged.asSharedFlow()
     
-    private val _targetFeedbackEvents = MutableSharedFlow<TargetFeedbackEvent>()
+    private val _targetFeedbackEvents = MutableSharedFlow<TargetFeedbackEvent>(
+        extraBufferCapacity = 1,
+        onBufferOverflow = BufferOverflow.DROP_OLDEST
+    )
     val targetFeedbackEvents = _targetFeedbackEvents.asSharedFlow()
     
     // MARK: - External Input
@@ -406,19 +410,22 @@ class ProgressorHandler {
         
         val difference = rawWeight - target
         val wasOffTarget = _isOffTarget.value
+        val previousDirection = _offTargetDirection.value
         
         if (kotlin.math.abs(difference) >= effectiveTolerance) {
             _isOffTarget.value = true
             _offTargetDirection.value = difference
-            if (!wasOffTarget) {
-                _targetFeedbackEvents.emit(TargetFeedbackEvent.OffTarget(difference))
+            val directionChanged = previousDirection != null &&
+                (previousDirection > 0) != (difference > 0)
+            if (!wasOffTarget || directionChanged) {
                 lastOffTargetFeedbackTimestampMicros = timestamp
+                _targetFeedbackEvents.emit(TargetFeedbackEvent.OffTarget(difference))
             } else {
                 val lastFeedback = lastOffTargetFeedbackTimestampMicros
                 val intervalMicros = AppConstants.OFF_TARGET_FEEDBACK_INTERVAL_MS * 1_000
                 if (lastFeedback == null || timestamp - lastFeedback >= intervalMicros) {
-                    _targetFeedbackEvents.emit(TargetFeedbackEvent.OffTarget(difference))
                     lastOffTargetFeedbackTimestampMicros = timestamp
+                    _targetFeedbackEvents.emit(TargetFeedbackEvent.OffTarget(difference))
                 }
             }
         } else {

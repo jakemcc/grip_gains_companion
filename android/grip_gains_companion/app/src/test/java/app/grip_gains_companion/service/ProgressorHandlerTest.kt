@@ -5,14 +5,143 @@ import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.TimeoutCancellationException
+import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
+import kotlinx.coroutines.yield
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class ProgressorHandlerTest {
+
+    @Test
+    fun slowFeedbackCollectorDoesNotQueueDuplicateOffTargetInstructions() = runBlocking {
+        val handler = ProgressorHandler().apply {
+            enableCalibration = false
+            canEngage = true
+            targetWeight = 20.0
+            weightTolerance = 0.5
+            engageThreshold = 3.0
+            failThreshold = 1.0
+        }
+        val collected = mutableListOf<TargetFeedbackEvent>()
+        val firstEventSeen = CompletableDeferred<Unit>()
+        val expectedEventsSeen = CompletableDeferred<Unit>()
+        val releaseCollector = CompletableDeferred<Unit>()
+        val collectionJob = launch(start = CoroutineStart.UNDISPATCHED) {
+            handler.targetFeedbackEvents.collect { event ->
+                collected += event
+                if (collected.size == 1) {
+                    firstEventSeen.complete(Unit)
+                    releaseCollector.await()
+                } else if (collected.size == 2) {
+                    expectedEventsSeen.complete(Unit)
+                }
+            }
+        }
+
+        handler.processSample(rawWeight = 0.0, timestamp = 0L)
+        val initialFeedback = launch {
+            handler.processSample(rawWeight = 21.0, timestamp = 1_000_000L)
+        }
+        firstEventSeen.await()
+        initialFeedback.join()
+
+        val feedbackIntervalMicros = AppConstants.OFF_TARGET_FEEDBACK_INTERVAL_MS * 1_000
+        val simultaneousSamples = listOf(
+            launch {
+                handler.processSample(
+                    rawWeight = 21.0,
+                    timestamp = 1_000_000L + feedbackIntervalMicros
+                )
+            },
+            launch {
+                handler.processSample(
+                    rawWeight = 21.0,
+                    timestamp = 1_100_000L + feedbackIntervalMicros
+                )
+            }
+        )
+
+        yield()
+        releaseCollector.complete(Unit)
+        simultaneousSamples.joinAll()
+        withTimeout(2_000) { expectedEventsSeen.await() }
+        yield()
+        collectionJob.cancel()
+
+        assertEquals(
+            listOf(
+                TargetFeedbackEvent.OffTarget(1.0),
+                TargetFeedbackEvent.OffTarget(1.0)
+            ),
+            collected
+        )
+    }
+
+    @Test
+    fun slowFeedbackCollectorKeepsOnlyNewestPendingInstruction() = runBlocking {
+        val handler = ProgressorHandler().apply {
+            enableCalibration = false
+            canEngage = true
+            targetWeight = 20.0
+            weightTolerance = 0.5
+            engageThreshold = 3.0
+            failThreshold = 1.0
+        }
+        val collected = mutableListOf<TargetFeedbackEvent>()
+        val firstEventSeen = CompletableDeferred<Unit>()
+        val expectedEventsSeen = CompletableDeferred<Unit>()
+        val releaseCollector = CompletableDeferred<Unit>()
+        val collectionJob = launch(start = CoroutineStart.UNDISPATCHED) {
+            handler.targetFeedbackEvents.collect { event ->
+                collected += event
+                if (collected.size == 1) {
+                    firstEventSeen.complete(Unit)
+                    releaseCollector.await()
+                } else if (collected.size == 2) {
+                    expectedEventsSeen.complete(Unit)
+                }
+            }
+        }
+
+        handler.processSample(rawWeight = 0.0, timestamp = 0L)
+        handler.processSample(rawWeight = 21.0, timestamp = 1_000_000L)
+        firstEventSeen.await()
+
+        val feedbackIntervalMicros = AppConstants.OFF_TARGET_FEEDBACK_INTERVAL_MS * 1_000
+        val pendingInstructions = listOf(
+            launch {
+                handler.processSample(
+                    rawWeight = 19.0,
+                    timestamp = 1_000_000L + feedbackIntervalMicros
+                )
+            },
+            launch {
+                handler.processSample(
+                    rawWeight = 21.0,
+                    timestamp = 1_000_000L + feedbackIntervalMicros * 2
+                )
+            }
+        )
+
+        yield()
+        releaseCollector.complete(Unit)
+        pendingInstructions.joinAll()
+        withTimeout(2_000) { expectedEventsSeen.await() }
+        yield()
+        collectionJob.cancel()
+
+        assertEquals(
+            listOf(
+                TargetFeedbackEvent.OffTarget(1.0),
+                TargetFeedbackEvent.OffTarget(1.0)
+            ),
+            collected
+        )
+    }
 
     @Test
     fun emitsRepeatedOffTargetEventsWhileGripRemainsOutOfRange() = runBlocking {
@@ -30,11 +159,13 @@ class ProgressorHandlerTest {
 
         handler.processSample(rawWeight = 0.0, timestamp = 0L)
         handler.processSample(rawWeight = 21.0, timestamp = 1_000_000L)
+        yield()
         handler.processSample(rawWeight = 21.0, timestamp = 1_500_000L)
         handler.processSample(
             rawWeight = 21.0,
             timestamp = 1_000_000L + AppConstants.OFF_TARGET_FEEDBACK_INTERVAL_MS * 1_000
         )
+        yield()
         handler.processSample(
             rawWeight = 21.0,
             timestamp = 1_000_000L + AppConstants.OFF_TARGET_FEEDBACK_INTERVAL_MS * 2_000
@@ -48,6 +179,37 @@ class ProgressorHandlerTest {
                 TargetFeedbackEvent.OffTarget(1.0),
                 TargetFeedbackEvent.OffTarget(1.0),
                 TargetFeedbackEvent.OffTarget(1.0)
+            ),
+            events
+        )
+    }
+
+    @Test
+    fun emitsNewDirectionImmediatelyWhenForceCrossesTheTargetRange() = runBlocking {
+        val handler = ProgressorHandler().apply {
+            enableCalibration = false
+            canEngage = true
+            targetWeight = 20.0
+            weightTolerance = 0.5
+            engageThreshold = 3.0
+            failThreshold = 1.0
+        }
+
+        val eventsDeferred = CompletableDeferred<List<TargetFeedbackEvent>>()
+        val collectionJob = collectTargetFeedbackEvents(this, handler, 2, eventsDeferred)
+
+        handler.processSample(rawWeight = 0.0, timestamp = 0L)
+        handler.processSample(rawWeight = 21.0, timestamp = 1_000_000L)
+        yield()
+        handler.processSample(rawWeight = 19.0, timestamp = 1_100_000L)
+
+        val events = withTimeout(2_000) { eventsDeferred.await() }
+        collectionJob.cancel()
+
+        assertEquals(
+            listOf(
+                TargetFeedbackEvent.OffTarget(1.0),
+                TargetFeedbackEvent.OffTarget(-1.0)
             ),
             events
         )
@@ -69,6 +231,7 @@ class ProgressorHandlerTest {
 
         handler.processSample(rawWeight = 0.0, timestamp = 0L)
         handler.processSample(rawWeight = 21.0, timestamp = 1_000_000L)
+        yield()
         handler.processSample(rawWeight = 20.2, timestamp = 1_100_000L)
 
         val events = withTimeout(2_000) { eventsDeferred.await() }

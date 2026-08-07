@@ -41,6 +41,7 @@ import app.grip_gains_companion.util.ToneGenerator
 import app.grip_gains_companion.util.playEnabledTargetFeedback
 import app.grip_gains_companion.util.playTargetFeedbackPreview
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import java.util.Locale
@@ -345,7 +346,7 @@ class MainActivity : ComponentActivity() {
         
         // Target-weight feedback
         lifecycleScope.launch {
-            progressorHandler.targetFeedbackEvents.collect { event ->
+            progressorHandler.targetFeedbackEvents.collectLatest { event ->
                 val enableHaptics = preferencesRepository.enableHaptics.first()
                 val soundSettings = TargetSoundSettings(
                     masterEnabled = preferencesRepository.enableTargetSound.first(),
