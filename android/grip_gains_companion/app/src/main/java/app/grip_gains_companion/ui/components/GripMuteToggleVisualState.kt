@@ -15,9 +15,20 @@ data class GripQuickActionLayout(
     val trailing: QuickAction
 )
 
+data class GripFloatingQuickActionPlacement(
+    val horizontalInsetDp: Int,
+    val topInsetDp: Int
+)
+
 fun gripQuickActionLayout() = GripQuickActionLayout(
     leading = QuickAction.MUTE,
     trailing = QuickAction.SETTINGS
+)
+
+fun gripFloatingQuickActionPlacement() = GripFloatingQuickActionPlacement(
+    // Leave the website's hamburger and notifications touch targets unobstructed.
+    horizontalInsetDp = 72,
+    topInsetDp = 16
 )
 
 fun gripMuteToggleVisualState(mutePhoneDuringGrip: Boolean): GripMuteToggleVisualState {

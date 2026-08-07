@@ -12,6 +12,14 @@ class GripMuteToggleVisualStateTest {
     }
 
     @Test
+    fun floatingActionsLeaveWebsiteHeaderControlsClear() {
+        val placement = gripFloatingQuickActionPlacement()
+
+        assertEquals(72, placement.horizontalInsetDp)
+        assertEquals(16, placement.topInsetDp)
+    }
+
+    @Test
     fun describesEnabledMuteState() {
         val state = gripMuteToggleVisualState(mutePhoneDuringGrip = true)
 

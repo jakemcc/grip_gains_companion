@@ -17,6 +17,7 @@ import app.grip_gains_companion.service.ble.BluetoothManager
 import app.grip_gains_companion.service.web.WebViewBridge
 import app.grip_gains_companion.ui.components.ForceGraph
 import app.grip_gains_companion.ui.components.QuickAction
+import app.grip_gains_companion.ui.components.gripFloatingQuickActionPlacement
 import app.grip_gains_companion.ui.components.gripMuteToggleVisualState
 import app.grip_gains_companion.ui.components.gripQuickActionLayout
 import app.grip_gains_companion.ui.components.StatusBar
@@ -125,6 +126,7 @@ fun MainScreen(
         // Floating quick actions (when status bar is hidden)
         if (!isConnected || !showStatusBar) {
             val quickActions = gripQuickActionLayout()
+            val placement = gripFloatingQuickActionPlacement()
             FloatingQuickAction(
                 action = quickActions.leading,
                 mutePhoneDuringGrip = mutePhoneDuringGrip,
@@ -132,7 +134,10 @@ fun MainScreen(
                 onSettingsTap = onSettingsTap,
                 modifier = Modifier
                     .align(Alignment.TopStart)
-                    .padding(16.dp)
+                    .padding(
+                        start = placement.horizontalInsetDp.dp,
+                        top = placement.topInsetDp.dp
+                    )
             )
             FloatingQuickAction(
                 action = quickActions.trailing,
@@ -141,7 +146,10 @@ fun MainScreen(
                 onSettingsTap = onSettingsTap,
                 modifier = Modifier
                     .align(Alignment.TopEnd)
-                    .padding(16.dp)
+                    .padding(
+                        end = placement.horizontalInsetDp.dp,
+                        top = placement.topInsetDp.dp
+                    )
             )
         }
     }
