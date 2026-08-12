@@ -42,12 +42,14 @@ fun MainScreen(
     manualTargetWeight: Double,
     weightTolerance: Double,
     mutePhoneDuringGrip: Boolean,
+    simulatedForceActive: Boolean = false,
+    simulatedTargetWeight: Double? = null,
     onSettingsTap: () -> Unit,
     onMutePhoneDuringGripToggle: () -> Unit,
     onUnitToggle: () -> Unit
 ) {
     val connectionState by bluetoothManager.connectionState.collectAsState()
-    val isConnected = connectionState == ConnectionState.Connected
+    val isConnected = connectionState == ConnectionState.Connected || simulatedForceActive
     val isReconnecting = connectionState == ConnectionState.Reconnecting
     val selectedDeviceType by bluetoothManager.selectedDeviceType.collectAsState()
     
@@ -66,8 +68,15 @@ fun MainScreen(
     val scrapedTargetWeight by webViewBridge.targetWeight.collectAsState()
     
     // Effective target weight
-    val effectiveTargetWeight = remember(enableTargetWeight, useManualTarget, manualTargetWeight, scrapedTargetWeight) {
-        if (!enableTargetWeight) null
+    val effectiveTargetWeight = remember(
+        enableTargetWeight,
+        useManualTarget,
+        manualTargetWeight,
+        scrapedTargetWeight,
+        simulatedTargetWeight
+    ) {
+        if (simulatedTargetWeight != null) simulatedTargetWeight
+        else if (!enableTargetWeight) null
         else if (useManualTarget) manualTargetWeight
         else scrapedTargetWeight
     }
@@ -94,7 +103,7 @@ fun MainScreen(
                     sessionStdDev = sessionStdDev,
                     useLbs = useLbs,
                     expanded = expandedForceBar,
-                    deviceShortName = selectedDeviceType.shortName,
+                    deviceShortName = if (simulatedForceActive) "simulator" else selectedDeviceType.shortName,
                     mutePhoneDuringGrip = mutePhoneDuringGrip,
                     onUnitToggle = onUnitToggle,
                     onMutePhoneDuringGripToggle = onMutePhoneDuringGripToggle,
@@ -109,7 +118,7 @@ fun MainScreen(
                     useLbs = useLbs,
                     windowSeconds = forceGraphWindow,
                     targetWeight = effectiveTargetWeight,
-                    tolerance = if (enableTargetWeight) weightTolerance else null,
+                    tolerance = if (enableTargetWeight || simulatedForceActive) weightTolerance else null,
                     isReconnecting = isReconnecting
                 )
             }

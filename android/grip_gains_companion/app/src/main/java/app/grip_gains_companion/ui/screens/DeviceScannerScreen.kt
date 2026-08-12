@@ -8,6 +8,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Bluetooth
 import androidx.compose.material.icons.filled.Error
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Science
 import androidx.compose.material.icons.filled.SignalCellular4Bar
 import androidx.compose.material3.*
 import androidx.compose.material3.SegmentedButton
@@ -29,7 +30,9 @@ import app.grip_gains_companion.service.ble.BluetoothManager
 fun DeviceScannerScreen(
     bluetoothManager: BluetoothManager,
     onDeviceSelected: (ForceDevice) -> Unit,
-    onSkipDevice: () -> Unit
+    onSkipDevice: () -> Unit,
+    showSimulatedDataOption: Boolean = false,
+    onUseSimulatedData: () -> Unit = {}
 ) {
     val connectionState by bluetoothManager.connectionState.collectAsState()
     val discoveredDevices by bluetoothManager.discoveredDevices.collectAsState()
@@ -75,6 +78,19 @@ fun DeviceScannerScreen(
             }
         }
         
+        if (showSimulatedDataOption) {
+            FilledTonalButton(
+                onClick = onUseSimulatedData,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 8.dp)
+            ) {
+                Icon(Icons.Default.Science, contentDescription = null)
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("Use simulated force data")
+            }
+        }
+
         // Skip button
         TextButton(
             onClick = onSkipDevice,

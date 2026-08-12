@@ -34,13 +34,14 @@ fun SettingsScreen(
     onConnectDevice: () -> Unit,
     onRecalibrate: () -> Unit,
     onViewLogs: () -> Unit,
+    simulatedForceActive: Boolean = false,
     onPreviewTargetFeedback: (TonePreviewAction, Boolean) -> Unit
 ) {
     val scope = rememberCoroutineScope()
     val connectionState by bluetoothManager.connectionState.collectAsStateWithLifecycle()
     val connectedDeviceName by bluetoothManager.connectedDeviceName.collectAsStateWithLifecycle()
     val selectedDeviceType by bluetoothManager.selectedDeviceType.collectAsStateWithLifecycle()
-    val isConnected = connectionState == ConnectionState.Connected
+    val isConnected = connectionState == ConnectionState.Connected || simulatedForceActive
     
     // Collect all preferences
     val useLbs by preferencesRepository.useLbs.collectAsStateWithLifecycle(initialValue = false)
@@ -312,7 +313,7 @@ fun SettingsScreen(
                         headlineContent = { Text("Connected to") },
                         trailingContent = {
                             Text(
-                                text = connectedDeviceName ?: "Unknown",
+                                text = if (simulatedForceActive) "Emulator force simulator" else connectedDeviceName ?: "Unknown",
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }

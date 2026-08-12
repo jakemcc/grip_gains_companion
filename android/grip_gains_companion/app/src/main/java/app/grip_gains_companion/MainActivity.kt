@@ -19,6 +19,8 @@ import androidx.compose.ui.Modifier
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
 import app.grip_gains_companion.data.PreferencesRepository
+import app.grip_gains_companion.debug.DebugForceDataSource
+import app.grip_gains_companion.debug.createDebugForceDataSource
 import app.grip_gains_companion.model.ConnectionState
 import app.grip_gains_companion.model.ProgressorState
 import app.grip_gains_companion.service.BackgroundInactivityShutdownTimer
@@ -54,6 +56,7 @@ class MainActivity : ComponentActivity() {
     private lateinit var preferencesRepository: PreferencesRepository
     private lateinit var hapticManager: HapticManager
     private lateinit var gripPeriodVolumeMuter: GripPeriodVolumeMuter
+    private lateinit var debugForceDataSource: DebugForceDataSource
     private val countdownSound = CountdownSound(playSecond = ToneGenerator::playCountdownTone)
     private val mainHandler = Handler(Looper.getMainLooper())
     private val backgroundInactivityShutdownTimer by lazy {
@@ -101,6 +104,10 @@ class MainActivity : ComponentActivity() {
         // Initialize services
         bluetoothManager = BluetoothManager(this)
         progressorHandler = ProgressorHandler()
+        debugForceDataSource = createDebugForceDataSource(
+            scope = lifecycleScope,
+            onSample = progressorHandler::processSample
+        )
         webViewBridge = WebViewBridge()
         preferencesRepository = PreferencesRepository(this)
         hapticManager = HapticManager(this)
@@ -138,6 +145,7 @@ class MainActivity : ComponentActivity() {
             val connectionState by bluetoothManager.connectionState.collectAsState()
             val isConnected = connectionState == ConnectionState.Connected
             val isReconnecting = connectionState == ConnectionState.Reconnecting
+            val simulatedForceActive by debugForceDataSource.isRunning.collectAsState()
             
             // Collect preferences
             val useLbs by preferencesRepository.useLbs.collectAsState(initial = false)
@@ -166,7 +174,7 @@ class MainActivity : ComponentActivity() {
             var activeGripReconnect by remember { mutableStateOf(false) }
             
             // Haptic feedback on connect
-            LaunchedEffect(connectionState) {
+            LaunchedEffect(connectionState, simulatedForceActive) {
                 when (connectionState) {
                     ConnectionState.Reconnecting -> {
                         if (progressorHandler.engaged && !activeGripReconnect) {
@@ -189,7 +197,9 @@ class MainActivity : ComponentActivity() {
                         }
                     }
                     ConnectionState.Disconnected -> {
-                        if (progressorHandler.engaged && !activeGripReconnect) {
+                        if (simulatedForceActive) {
+                            activeGripReconnect = false
+                        } else if (progressorHandler.engaged && !activeGripReconnect) {
                             activeGripReconnect = true
                             progressorHandler.onConnectionLost()
                             speakStatus("Disconnected")
@@ -224,11 +234,24 @@ class MainActivity : ComponentActivity() {
                                 onDismiss = { showSettings = false },
                                 onDisconnect = {
                                     showSettings = false
-                                    bluetoothManager.disconnect()
+                                    if (simulatedForceActive) {
+                                        debugForceDataSource.stop()
+                                        progressorHandler.reset()
+                                        if (hasAllPermissions()) {
+                                            bluetoothManager.startScanning()
+                                        }
+                                    } else {
+                                        bluetoothManager.disconnect()
+                                    }
                                     skippedDevice = false
                                 },
                                 onConnectDevice = {
                                     showSettings = false
+                                    debugForceDataSource.stop()
+                                    progressorHandler.reset()
+                                    if (hasAllPermissions()) {
+                                        bluetoothManager.startScanning()
+                                    }
                                     skippedDevice = false
                                 },
                                 onRecalibrate = {
@@ -240,6 +263,7 @@ class MainActivity : ComponentActivity() {
                                     showSettings = false
                                     showLogViewer = true
                                 },
+                                simulatedForceActive = simulatedForceActive,
                                 onPreviewTargetFeedback = { action, spokenDirectionsEnabled ->
                                     action.playTargetFeedbackPreview(
                                         spokenDirectionsEnabled = spokenDirectionsEnabled,
@@ -253,7 +277,7 @@ class MainActivity : ComponentActivity() {
                             )
                         }
                         
-                        isConnected || isReconnecting || skippedDevice -> {
+                        isConnected || isReconnecting || simulatedForceActive || skippedDevice -> {
                             MainScreen(
                                 bluetoothManager = bluetoothManager,
                                 progressorHandler = progressorHandler,
@@ -268,6 +292,10 @@ class MainActivity : ComponentActivity() {
                                 manualTargetWeight = manualTargetWeight,
                                 weightTolerance = weightTolerance,
                                 mutePhoneDuringGrip = mutePhoneDuringGrip,
+                                simulatedForceActive = simulatedForceActive,
+                                simulatedTargetWeight = debugForceDataSource.targetWeightKg.takeIf {
+                                    simulatedForceActive
+                                },
                                 onSettingsTap = { showSettings = true },
                                 onMutePhoneDuringGripToggle = {
                                     lifecycleScope.launch {
@@ -290,6 +318,13 @@ class MainActivity : ComponentActivity() {
                                 },
                                 onSkipDevice = {
                                     skippedDevice = true
+                                },
+                                showSimulatedDataOption = debugForceDataSource.isAvailable,
+                                onUseSimulatedData = {
+                                    bluetoothManager.stopScanning()
+                                    progressorHandler.reset()
+                                    debugForceDataSource.start()
+                                    skippedDevice = false
                                 }
                             )
                         }
@@ -321,6 +356,8 @@ class MainActivity : ComponentActivity() {
         // Grip failed -> click fail or end session button
         lifecycleScope.launch {
             progressorHandler.gripFailed.collect {
+                if (debugForceDataSource.isRunning.value) return@collect
+
                 if (shouldEndSessionOnEarlyFail()) {
                     webViewBridge.clickEndSessionButton()
                 } else {
@@ -347,6 +384,8 @@ class MainActivity : ComponentActivity() {
         // Target-weight feedback
         lifecycleScope.launch {
             progressorHandler.targetFeedbackEvents.collectLatest { event ->
+                if (debugForceDataSource.isRunning.value) return@collectLatest
+
                 val enableHaptics = preferencesRepository.enableHaptics.first()
                 val soundSettings = TargetSoundSettings(
                     masterEnabled = preferencesRepository.enableTargetSound.first(),
@@ -372,21 +411,28 @@ class MainActivity : ComponentActivity() {
         
         // Button state changes
         lifecycleScope.launch {
-            webViewBridge.buttonEnabled.collect { enabled ->
-                progressorHandler.canEngage = enabled
-            }
+            webViewBridge.buttonEnabled
+                .combine(debugForceDataSource.isRunning) { enabled, simulated -> enabled || simulated }
+                .collect { progressorHandler.canEngage = it }
         }
         
         // Update handler with target weight from web
         lifecycleScope.launch {
-            webViewBridge.targetWeight.collect { weight ->
-                val enableTargetWeight = preferencesRepository.enableTargetWeight.first()
-                val useManualTarget = preferencesRepository.useManualTarget.first()
-                
-                if (enableTargetWeight && !useManualTarget) {
-                    progressorHandler.targetWeight = weight
+            webViewBridge.targetWeight
+                .combine(debugForceDataSource.isRunning) { weight, simulated -> weight to simulated }
+                .collect { (weight, simulated) ->
+                    if (simulated) {
+                        progressorHandler.targetWeight = debugForceDataSource.targetWeightKg
+                        return@collect
+                    }
+
+                    val enableTargetWeight = preferencesRepository.enableTargetWeight.first()
+                    val useManualTarget = preferencesRepository.useManualTarget.first()
+
+                    if (enableTargetWeight && !useManualTarget) {
+                        progressorHandler.targetWeight = weight
+                    }
                 }
-            }
         }
 
         // Timer countdown sound for pre-start and rest timers.
@@ -456,7 +502,11 @@ class MainActivity : ComponentActivity() {
         super.onStart()
         if (::bluetoothManager.isInitialized) {
             backgroundInactivityShutdownTimer.onEnteredForeground()
-            if (hasAllPermissions() && bluetoothManager.connectionState.value == ConnectionState.Disconnected) {
+            if (
+                !debugForceDataSource.isRunning.value &&
+                hasAllPermissions() &&
+                bluetoothManager.connectionState.value == ConnectionState.Disconnected
+            ) {
                 bluetoothManager.startScanning()
             }
         }
@@ -474,6 +524,9 @@ class MainActivity : ComponentActivity() {
         backgroundInactivityShutdownTimer.onEnteredForeground()
         if (::gripPeriodVolumeMuter.isInitialized) {
             gripPeriodVolumeMuter.restoreIfNeeded()
+        }
+        if (::debugForceDataSource.isInitialized) {
+            debugForceDataSource.stop()
         }
         bluetoothManager.disconnect()
         textToSpeech?.shutdown()
