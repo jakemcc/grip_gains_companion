@@ -13,10 +13,14 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.grip_gains_companion.ui.theme.StatusColors
+import app.grip_gains_companion.util.GripStatisticsFormatter
 import app.grip_gains_companion.util.WeightFormatter
 import kotlin.math.abs
 
@@ -311,43 +315,53 @@ private fun StatisticsDisplay(
     stdDev: Double?,
     useLbs: Boolean
 ) {
-    Row(
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        // Mean
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(
-                text = "x̄",
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            Spacer(modifier = Modifier.width(2.dp))
-            Text(
-                text = WeightFormatter.format(mean, useLbs),
-                style = MaterialTheme.typography.labelMedium,
-                fontWeight = FontWeight.Medium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
-        
-        // Std dev
-        if (stdDev != null && stdDev > 0) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    text = "σ",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+    val statistics = GripStatisticsFormatter.format(mean, stdDev, useLbs)
+    val secondaryColor = MaterialTheme.colorScheme.onSurfaceVariant
+
+    Text(
+        text = buildAnnotatedString {
+            withStyle(
+                SpanStyle(
+                    color = secondaryColor,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    letterSpacing = 0.6.sp
                 )
-                Spacer(modifier = Modifier.width(2.dp))
-                Text(
-                    text = WeightFormatter.format(stdDev, useLbs, includeUnit = false),
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+            ) {
+                append("AVG ")
             }
-        }
-    }
+            withStyle(
+                SpanStyle(
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.SemiBold
+                )
+            ) {
+                append(statistics.mean)
+            }
+            statistics.variation?.let { variation ->
+                withStyle(
+                    SpanStyle(
+                        color = secondaryColor,
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.Medium
+                    )
+                ) {
+                    append(" σ $variation")
+                }
+            }
+            withStyle(
+                SpanStyle(
+                    color = secondaryColor,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Medium
+                )
+            ) {
+                append(" ${statistics.unit}")
+            }
+        },
+        color = MaterialTheme.colorScheme.onSurface,
+        maxLines = 1
+    )
 }
 
 @Composable
@@ -388,18 +402,26 @@ private fun TargetWeightDisplay(
     useLbs: Boolean
 ) {
     if (targetWeight != null) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
             Text(
-                text = "Target: ${WeightFormatter.format(targetWeight, useLbs)}",
-                style = MaterialTheme.typography.labelMedium,
+                text = "🎯",
+                fontSize = 16.sp
+            )
+            Text(
+                text = WeightFormatter.format(targetWeight, useLbs),
+                fontSize = 18.sp,
+                fontWeight = FontWeight.SemiBold,
                 color = if (isOffTarget) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant
             )
             
             if (isOffTarget && offTargetDirection != null) {
                 val sign = if (offTargetDirection > 0) "+" else ""
                 Text(
-                    text = " ($sign${WeightFormatter.format(offTargetDirection, useLbs)})",
-                    style = MaterialTheme.typography.labelMedium,
+                    text = "$sign${WeightFormatter.format(offTargetDirection, useLbs, includeUnit = false)}",
+                    fontSize = 13.sp,
                     fontWeight = FontWeight.Medium,
                     color = MaterialTheme.colorScheme.error
                 )
