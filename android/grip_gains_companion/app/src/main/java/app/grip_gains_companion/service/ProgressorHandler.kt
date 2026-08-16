@@ -3,6 +3,7 @@ package app.grip_gains_companion.service
 import app.grip_gains_companion.config.AppConstants
 import app.grip_gains_companion.model.ForceHistoryEntry
 import app.grip_gains_companion.model.ProgressorState
+import app.grip_gains_companion.model.RepResult
 import app.grip_gains_companion.model.TimestampedSample
 import app.grip_gains_companion.util.StatisticsUtils
 import kotlinx.coroutines.channels.BufferOverflow
@@ -40,6 +41,9 @@ class ProgressorHandler {
     
     private val _forceHistory = MutableStateFlow<List<ForceHistoryEntry>>(emptyList())
     val forceHistory: StateFlow<List<ForceHistoryEntry>> = _forceHistory.asStateFlow()
+
+    private val _sessionRepResults = MutableStateFlow<List<RepResult>>(emptyList())
+    val sessionRepResults: StateFlow<List<RepResult>> = _sessionRepResults.asStateFlow()
     
     private val _isOffTarget = MutableStateFlow(false)
     val isOffTarget: StateFlow<Boolean> = _isOffTarget.asStateFlow()
@@ -213,6 +217,10 @@ class ProgressorHandler {
         resetCommonState()
     }
 
+    fun clearSessionRepResults() {
+        _sessionRepResults.value = emptyList()
+    }
+
     fun onConnectionLost() {
         if (_state.value is ProgressorState.Gripping) {
             lostConnectionDuringGrip = true
@@ -238,6 +246,7 @@ class ProgressorHandler {
         _sessionMean.value = null
         _sessionStdDev.value = null
         _forceHistory.value = emptyList()
+        clearSessionRepResults()
         firstDeviceTimestamp = null
         firstDisplayTimestamp = null
         lostConnectionDuringGrip = false
@@ -312,11 +321,20 @@ class ProgressorHandler {
                     // Grip failed
                     stopOffTargetTimer()
                     val duration = (timestamp - currentState.startTimestamp) / 1_000_000.0
+                    val completedRepWeights = currentState.samples.map {
+                        it.weight - currentState.baselineValue
+                    }
+                    _sessionRepResults.value += RepResult(
+                        timestamp = Date(),
+                        duration = duration,
+                        samples = completedRepWeights,
+                        targetWeight = targetWeight
+                    )
                     _state.value = ProgressorState.Idle(currentState.baselineValue)
                     _isOffTarget.value = false
                     _offTargetDirection.value = null
                     _gripFailed.emit(Unit)
-                    _gripDisengaged.emit(Pair(duration, taredWeights))
+                    _gripDisengaged.emit(Pair(duration, completedRepWeights))
                 } else {
                     _state.value = ProgressorState.Gripping(
                         currentState.baselineValue,

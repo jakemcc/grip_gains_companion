@@ -523,7 +523,10 @@ object JavaScriptBridge {
      */
     val saveButtonObserverScript = """
         (function() {
+            if (window.__gripGainsCompanionSaveButtonObserverInstalled) return;
+            window.__gripGainsCompanionSaveButtonObserverInstalled = true;
             let lastSaveButtonVisible = false;
+            let hasReportedVisibility = false;
 
             function checkSaveButton() {
                 const buttons = document.querySelectorAll('button.btn.btn-primary');
@@ -536,8 +539,9 @@ object JavaScriptBridge {
                     }
                 }
 
-                if (saveButtonFound && !lastSaveButtonVisible) {
-                    Android.onSaveButtonAppeared();
+                if (!hasReportedVisibility || saveButtonFound !== lastSaveButtonVisible) {
+                    hasReportedVisibility = true;
+                    Android.onSaveButtonVisibilityChanged(saveButtonFound);
                 }
                 lastSaveButtonVisible = saveButtonFound;
             }

@@ -3,10 +3,8 @@ package app.grip_gains_companion.service.web
 import android.webkit.JavascriptInterface
 import android.webkit.WebView
 import app.grip_gains_companion.config.AppConstants
-import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import org.json.JSONArray
 
@@ -46,9 +44,8 @@ class WebViewBridge {
     private val _settingsVisible = MutableStateFlow(true)
     val settingsVisible: StateFlow<Boolean> = _settingsVisible.asStateFlow()
     
-    // Events
-    private val _saveButtonAppeared = MutableSharedFlow<Unit>()
-    val saveButtonAppeared = _saveButtonAppeared.asSharedFlow()
+    private val _saveButtonVisible = MutableStateFlow(false)
+    val saveButtonVisible: StateFlow<Boolean> = _saveButtonVisible.asStateFlow()
     
     fun setWebView(webView: WebView) {
         this.webView = webView
@@ -104,8 +101,8 @@ class WebViewBridge {
     }
     
     @JavascriptInterface
-    fun onSaveButtonAppeared() {
-        _saveButtonAppeared.tryEmit(Unit)
+    fun onSaveButtonVisibilityChanged(visible: Boolean) {
+        _saveButtonVisible.value = visible
     }
     
     // MARK: - Android -> JavaScript

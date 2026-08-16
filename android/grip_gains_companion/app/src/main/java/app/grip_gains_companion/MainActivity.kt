@@ -45,6 +45,7 @@ import app.grip_gains_companion.util.playTargetFeedbackPreview
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.launch
 import java.util.Locale
 
@@ -161,6 +162,7 @@ class MainActivity : ComponentActivity() {
             val enableTargetSound by preferencesRepository.enableTargetSound.collectAsState(initial = true)
             val enableCalibration by preferencesRepository.enableCalibration.collectAsState(initial = true)
             val mutePhoneDuringGrip by preferencesRepository.mutePhoneDuringGrip.collectAsState(initial = false)
+            val showGripStats by preferencesRepository.showGripStats.collectAsState(initial = true)
             
             // Update handler settings
             LaunchedEffect(enableCalibration) {
@@ -292,6 +294,7 @@ class MainActivity : ComponentActivity() {
                                 manualTargetWeight = manualTargetWeight,
                                 weightTolerance = weightTolerance,
                                 mutePhoneDuringGrip = mutePhoneDuringGrip,
+                                showGripStats = showGripStats,
                                 simulatedForceActive = simulatedForceActive,
                                 simulatedTargetWeight = debugForceDataSource.targetWeightKg.takeIf {
                                     simulatedForceActive
@@ -414,6 +417,13 @@ class MainActivity : ComponentActivity() {
             webViewBridge.buttonEnabled
                 .combine(debugForceDataSource.isRunning) { enabled, simulated -> enabled || simulated }
                 .collect { progressorHandler.canEngage = it }
+        }
+
+        // Leaving the completed-session screen starts a fresh, in-memory summary.
+        lifecycleScope.launch {
+            webViewBridge.saveButtonVisible.drop(1).collect { visible ->
+                if (!visible) progressorHandler.clearSessionRepResults()
+            }
         }
         
         // Update handler with target weight from web

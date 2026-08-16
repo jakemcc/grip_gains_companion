@@ -52,4 +52,13 @@ class JavaScriptBridgeTest {
             )
         }
     }
+
+    @Test
+    fun saveButtonObserverReportsBothEnteringAndLeavingTheSessionSummary() {
+        val script = JavaScriptBridge.saveButtonObserverScript
+
+        assertTrue(script.contains("onSaveButtonVisibilityChanged(saveButtonFound)"))
+        assertTrue(script.contains("saveButtonFound !== lastSaveButtonVisible"))
+        assertTrue(script.contains("__gripGainsCompanionSaveButtonObserverInstalled"))
+    }
 }

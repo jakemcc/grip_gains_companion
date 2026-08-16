@@ -21,6 +21,7 @@ import app.grip_gains_companion.ui.components.gripFloatingQuickActionPlacement
 import app.grip_gains_companion.ui.components.gripMuteToggleVisualState
 import app.grip_gains_companion.ui.components.gripQuickActionLayout
 import app.grip_gains_companion.ui.components.StatusBar
+import app.grip_gains_companion.ui.components.SessionRepSummary
 import app.grip_gains_companion.ui.components.TimerWebView
 
 /**
@@ -42,6 +43,7 @@ fun MainScreen(
     manualTargetWeight: Double,
     weightTolerance: Double,
     mutePhoneDuringGrip: Boolean,
+    showGripStats: Boolean,
     simulatedForceActive: Boolean = false,
     simulatedTargetWeight: Double? = null,
     onSettingsTap: () -> Unit,
@@ -61,11 +63,13 @@ fun MainScreen(
     val sessionMean by progressorHandler.sessionMean.collectAsState()
     val sessionStdDev by progressorHandler.sessionStdDev.collectAsState()
     val forceHistory by progressorHandler.forceHistory.collectAsState()
+    val sessionRepResults by progressorHandler.sessionRepResults.collectAsState()
     val isOffTarget by progressorHandler.isOffTarget.collectAsState()
     val offTargetDirection by progressorHandler.offTargetDirection.collectAsState()
     
     // Web view state
     val scrapedTargetWeight by webViewBridge.targetWeight.collectAsState()
+    val saveButtonVisible by webViewBridge.saveButtonVisible.collectAsState()
     
     // Effective target weight
     val effectiveTargetWeight = remember(
@@ -99,8 +103,8 @@ fun MainScreen(
                     targetWeight = effectiveTargetWeight,
                     isOffTarget = isOffTarget,
                     offTargetDirection = offTargetDirection,
-                    sessionMean = sessionMean,
-                    sessionStdDev = sessionStdDev,
+                    sessionMean = sessionMean.takeIf { showGripStats },
+                    sessionStdDev = sessionStdDev.takeIf { showGripStats },
                     useLbs = useLbs,
                     expanded = expandedForceBar,
                     deviceShortName = if (simulatedForceActive) "simulator" else selectedDeviceType.shortName,
@@ -120,6 +124,13 @@ fun MainScreen(
                     targetWeight = effectiveTargetWeight,
                     tolerance = if (enableTargetWeight || simulatedForceActive) weightTolerance else null,
                     isReconnecting = isReconnecting
+                )
+            }
+
+            if (showGripStats && saveButtonVisible && sessionRepResults.isNotEmpty()) {
+                SessionRepSummary(
+                    repResults = sessionRepResults,
+                    useLbs = useLbs
                 )
             }
             
