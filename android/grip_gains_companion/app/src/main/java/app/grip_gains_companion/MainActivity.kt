@@ -163,6 +163,9 @@ class MainActivity : ComponentActivity() {
             val enableCalibration by preferencesRepository.enableCalibration.collectAsState(initial = true)
             val mutePhoneDuringGrip by preferencesRepository.mutePhoneDuringGrip.collectAsState(initial = false)
             val showGripStats by preferencesRepository.showGripStats.collectAsState(initial = true)
+            val showEndOfSessionSummary by preferencesRepository.showEndOfSessionSummary.collectAsState(
+                initial = false
+            )
             
             // Update handler settings
             LaunchedEffect(enableCalibration) {
@@ -295,6 +298,7 @@ class MainActivity : ComponentActivity() {
                                 weightTolerance = weightTolerance,
                                 mutePhoneDuringGrip = mutePhoneDuringGrip,
                                 showGripStats = showGripStats,
+                                showEndOfSessionSummary = showEndOfSessionSummary,
                                 simulatedForceActive = simulatedForceActive,
                                 simulatedTargetWeight = debugForceDataSource.targetWeightKg.takeIf {
                                     simulatedForceActive

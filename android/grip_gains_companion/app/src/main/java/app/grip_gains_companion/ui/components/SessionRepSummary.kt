@@ -20,6 +20,12 @@ import androidx.compose.ui.unit.dp
 import app.grip_gains_companion.model.RepResult
 import app.grip_gains_companion.util.GripStatisticsFormatter
 
+internal fun shouldShowEndOfSessionSummary(
+    enabled: Boolean,
+    saveButtonVisible: Boolean,
+    hasRepResults: Boolean
+): Boolean = enabled && saveButtonVisible && hasRepResults
+
 @Composable
 fun SessionRepSummary(
     repResults: List<RepResult>,

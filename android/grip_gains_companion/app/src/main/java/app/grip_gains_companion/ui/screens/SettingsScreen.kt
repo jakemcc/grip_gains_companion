@@ -63,6 +63,9 @@ fun SettingsScreen(
     val weightTolerance by preferencesRepository.weightTolerance.collectAsStateWithLifecycle(initialValue = 0.5)
     val enableCalibration by preferencesRepository.enableCalibration.collectAsStateWithLifecycle(initialValue = true)
     val showGripStats by preferencesRepository.showGripStats.collectAsStateWithLifecycle(initialValue = true)
+    val showEndOfSessionSummary by preferencesRepository.showEndOfSessionSummary.collectAsStateWithLifecycle(
+        initialValue = false
+    )
     val backgroundTimeSync by preferencesRepository.backgroundTimeSync.collectAsStateWithLifecycle(initialValue = true)
     val enableLiveActivity by preferencesRepository.enableLiveActivity.collectAsStateWithLifecycle(initialValue = true)
     val autoSelectWeight by preferencesRepository.autoSelectWeight.collectAsStateWithLifecycle(initialValue = true)
@@ -302,6 +305,14 @@ fun SettingsScreen(
                     title = "Grip Statistics",
                     checked = showGripStats,
                     onCheckedChange = { scope.launch { preferencesRepository.setShowGripStats(it) } }
+                )
+
+                SwitchPreference(
+                    title = "End of Session Summary",
+                    checked = showEndOfSessionSummary,
+                    onCheckedChange = {
+                        scope.launch { preferencesRepository.setShowEndOfSessionSummary(it) }
+                    }
                 )
                 
             }

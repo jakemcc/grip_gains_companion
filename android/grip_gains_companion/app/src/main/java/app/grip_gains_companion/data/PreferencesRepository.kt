@@ -68,6 +68,7 @@ class PreferencesRepository(private val context: Context) {
         val AUTO_SELECT_FROM_MANUAL = booleanPreferencesKey("auto_select_from_manual")
         
         val SHOW_GRIP_STATS = booleanPreferencesKey("show_grip_stats")
+        val SHOW_END_OF_SESSION_SUMMARY = booleanPreferencesKey("show_end_of_session_summary")
         val ENABLE_END_SESSION_ON_EARLY_FAIL = booleanPreferencesKey("enable_end_session_on_early_fail")
         val EARLY_FAIL_THRESHOLD_PERCENT = doublePreferencesKey("early_fail_threshold_percent")
         
@@ -253,6 +254,13 @@ class PreferencesRepository(private val context: Context) {
         it[Keys.SHOW_GRIP_STATS] ?: AppConstants.DEFAULT_SHOW_GRIP_STATS 
     }
     suspend fun setShowGripStats(value: Boolean) = context.dataStore.edit { it[Keys.SHOW_GRIP_STATS] = value }
+
+    val showEndOfSessionSummary: Flow<Boolean> = context.dataStore.data.map {
+        it[Keys.SHOW_END_OF_SESSION_SUMMARY] ?: AppConstants.DEFAULT_SHOW_END_OF_SESSION_SUMMARY
+    }
+    suspend fun setShowEndOfSessionSummary(value: Boolean) = context.dataStore.edit {
+        it[Keys.SHOW_END_OF_SESSION_SUMMARY] = value
+    }
     
     // Early fail preferences
     val enableEndSessionOnEarlyFail: Flow<Boolean> = context.dataStore.data.map {

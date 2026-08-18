@@ -22,6 +22,7 @@ import app.grip_gains_companion.ui.components.gripMuteToggleVisualState
 import app.grip_gains_companion.ui.components.gripQuickActionLayout
 import app.grip_gains_companion.ui.components.StatusBar
 import app.grip_gains_companion.ui.components.SessionRepSummary
+import app.grip_gains_companion.ui.components.shouldShowEndOfSessionSummary
 import app.grip_gains_companion.ui.components.TimerWebView
 
 /**
@@ -44,6 +45,7 @@ fun MainScreen(
     weightTolerance: Double,
     mutePhoneDuringGrip: Boolean,
     showGripStats: Boolean,
+    showEndOfSessionSummary: Boolean,
     simulatedForceActive: Boolean = false,
     simulatedTargetWeight: Double? = null,
     onSettingsTap: () -> Unit,
@@ -127,7 +129,13 @@ fun MainScreen(
                 )
             }
 
-            if (showGripStats && saveButtonVisible && sessionRepResults.isNotEmpty()) {
+            if (
+                shouldShowEndOfSessionSummary(
+                    enabled = showEndOfSessionSummary,
+                    saveButtonVisible = saveButtonVisible,
+                    hasRepResults = sessionRepResults.isNotEmpty()
+                )
+            ) {
                 SessionRepSummary(
                     repResults = sessionRepResults,
                     useLbs = useLbs
