@@ -50,7 +50,7 @@ import kotlinx.coroutines.launch
 import java.util.Locale
 
 class MainActivity : ComponentActivity() {
-    
+
     private lateinit var bluetoothManager: BluetoothManager
     private lateinit var progressorHandler: ProgressorHandler
     private lateinit var webViewBridge: WebViewBridge
@@ -145,13 +145,18 @@ class MainActivity : ComponentActivity() {
         setContent {
             val connectionState by bluetoothManager.connectionState.collectAsState()
             val isConnected = connectionState == ConnectionState.Connected
-            val isReconnecting = connectionState == ConnectionState.Reconnecting
             val simulatedForceActive by debugForceDataSource.isRunning.collectAsState()
             
             // Collect preferences
             val useLbs by preferencesRepository.useLbs.collectAsState(initial = false)
             val showStatusBar by preferencesRepository.showStatusBar.collectAsState(initial = true)
             val expandedForceBar by preferencesRepository.expandedForceBar.collectAsState(initial = true)
+
+            // --- SYNC HARDWARE PARSER TO UI ---
+            LaunchedEffect(useLbs) {
+                bluetoothManager.setHardwareUnitIsLbs(useLbs)
+            }
+
             val showForceGraph by preferencesRepository.showForceGraph.collectAsState(initial = true)
             val forceGraphWindow by preferencesRepository.forceGraphWindow.collectAsState(initial = 5)
             val enableTargetWeight by preferencesRepository.enableTargetWeight.collectAsState(initial = true)
@@ -282,7 +287,7 @@ class MainActivity : ComponentActivity() {
                             )
                         }
                         
-                        isConnected || isReconnecting || simulatedForceActive || skippedDevice -> {
+                        isConnected || simulatedForceActive || skippedDevice -> {
                             MainScreen(
                                 bluetoothManager = bluetoothManager,
                                 progressorHandler = progressorHandler,

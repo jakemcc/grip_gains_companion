@@ -12,6 +12,7 @@ import android.bluetooth.BluetoothProfile
 import android.bluetooth.BluetoothStatusCodes
 import android.bluetooth.le.BluetoothLeScanner
 import android.bluetooth.le.ScanCallback
+import android.bluetooth.le.ScanFilter
 import android.bluetooth.le.ScanResult
 import android.bluetooth.le.ScanSettings
 import android.content.Context
@@ -72,6 +73,9 @@ class BluetoothManager(private val context: Context) {
     private var pitchSixService: PitchSixService? = null
     private var whc06Service: WHC06Service? = null
 
+    // Holds the UI state to sync with the clone hardware
+    private var hardwareUnitIsLbs: Boolean = false
+
     // Preferences for persistence
     private val prefs: SharedPreferences = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
 
@@ -84,6 +88,9 @@ class BluetoothManager(private val context: Context) {
 
     private val _connectedDeviceName = MutableStateFlow<String?>(null)
     val connectedDeviceName: StateFlow<String?> = _connectedDeviceName.asStateFlow()
+
+    private val _connectedDeviceAddress = MutableStateFlow<String?>(null)
+    val connectedDeviceAddress: StateFlow<String?> = _connectedDeviceAddress.asStateFlow()
 
     private val _connectedDeviceType = MutableStateFlow<DeviceType?>(null)
     val connectedDeviceType: StateFlow<DeviceType?> = _connectedDeviceType.asStateFlow()
@@ -125,6 +132,12 @@ class BluetoothManager(private val context: Context) {
         _discoveredDevices.value = emptyList()
     }
 
+    // Called from MainActivity to sync the math!
+    fun setHardwareUnitIsLbs(isLbs: Boolean) {
+        hardwareUnitIsLbs = isLbs
+        whc06Service?.assumeHardwareIsLbs = isLbs
+    }
+
     // MARK: - Scanning
 
     fun startScanning() {
@@ -149,10 +162,17 @@ class BluetoothManager(private val context: Context) {
         _discoveredDevices.value = emptyList()
         _connectionState.value = ConnectionState.Scanning
 
-        bluetoothLeScanner = bluetoothAdapter.bluetoothLeScanner
+        bluetoothLeScanner = bluetoothManager.adapter?.bluetoothLeScanner
 
+        if (bluetoothLeScanner == null) {
+            _connectionState.value = ConnectionState.Error("Failed to initialize scanner. Try restarting Bluetooth.")
+            return
+        }
+
+        // AGGRESSIVE SCANNING: Stop Android from throttling your connection
         val settings = ScanSettings.Builder()
             .setScanMode(ScanSettings.SCAN_MODE_LOW_LATENCY)
+            .setReportDelay(0)
             .build()
 
         // No filter - we'll filter by device type in the callback
@@ -168,38 +188,49 @@ class BluetoothManager(private val context: Context) {
 
     private val scanCallback = object : ScanCallback() {
         override fun onScanResult(callbackType: Int, result: ScanResult) {
-            // For WHC06, process advertisement data if already "connected" and from the selected device
-            if (_selectedDeviceType.value == DeviceType.WEIHENG_WHC06 &&
-                _connectionState.value == ConnectionState.Connected &&
-                _connectedDeviceType.value == DeviceType.WEIHENG_WHC06) {
+            val deviceName = result.device.name
+            val deviceAddress = result.device.address
 
-                val selectedDevice = pendingDevice
-                if (selectedDevice != null && result.device.address == selectedDevice.address) {
-                    whc06Service?.processAdvertisement(result)
+            // THE RECONNECT FIX: Process advertisements if we are Connected OR Reconnecting!
+            val isWhc06Active = _connectedDeviceType.value == DeviceType.WEIHENG_WHC06 || pendingDevice?.type == DeviceType.WEIHENG_WHC06
+            val isExpectedDevice = pendingDevice != null && deviceAddress == pendingDevice?.address
+
+            if (isWhc06Active && isExpectedDevice) {
+                // If we were reconnecting, and we just heard a packet, we are officially connected again!
+                if (_connectionState.value == ConnectionState.Reconnecting || _connectionState.value == ConnectionState.Connecting) {
+                    _connectionState.value = ConnectionState.Connected
+                    _connectedDeviceName.value = pendingDevice?.name ?: "WH-C06"
+                    _connectedDeviceAddress.value = deviceAddress
+                    retryCount = 0
+                    cancelRetryTimer()
                 }
-                return
+                whc06Service?.processAdvertisement(result)
             }
 
             // Create device if it matches the selected type
-            val device = ForceDevice.fromScanResult(result, _selectedDeviceType.value) ?: return
-
-            val currentList = _discoveredDevices.value.toMutableList()
-            val existingIndex = currentList.indexOfFirst { it.address == device.address }
-
-            if (existingIndex >= 0) {
-                currentList[existingIndex] = device
-            } else {
-                Log.i(TAG, "Discovered: ${device.name} (${device.type.shortName})")
-                currentList.add(device)
-
-                // Auto-connect if this is the last connected device
-                if (device.address == lastConnectedDeviceAddress) {
-                    Log.i(TAG, "Auto-reconnecting to last device...")
-                    connect(device)
+            if (deviceName != null && deviceName.isNotBlank()) {
+                val inferredType = when {
+                    deviceName.contains("Progressor", ignoreCase = true) -> DeviceType.TINDEQ_PROGRESSOR
+                    deviceName.contains("PitchSix", ignoreCase = true) || deviceName.contains("Force Board", ignoreCase = true) -> DeviceType.PITCH_SIX_FORCE_BOARD
+                    deviceName.contains("WH-C06", ignoreCase = true) || deviceName.contains("IF_B7", ignoreCase = true) -> DeviceType.WEIHENG_WHC06
+                    else -> null
+                }
+                if (inferredType != null) {
+                    val device = ForceDevice.fromScanResult(result, inferredType)
+                        ?: ForceDevice(deviceAddress, deviceName, inferredType)
+                    val currentList = _discoveredDevices.value.toMutableList()
+                    val existingIndex = currentList.indexOfFirst { it.address == device.address }
+                    if (existingIndex >= 0) {
+                        currentList[existingIndex] = device
+                    } else {
+                        currentList.add(device)
+                        if (device.address == lastConnectedDeviceAddress) {
+                            connect(device)
+                        }
+                    }
+                    _discoveredDevices.value = currentList
                 }
             }
-
-            _discoveredDevices.value = currentList
         }
 
         override fun onScanFailed(errorCode: Int) {
@@ -214,6 +245,10 @@ class BluetoothManager(private val context: Context) {
         Log.i(TAG, "Connecting to ${device.name} (${device.type.shortName})...")
         stopScanning()
         cancelRetryTimer()
+
+        bluetoothGatt?.disconnect()
+        bluetoothGatt?.close()
+        bluetoothGatt = null
 
         pendingDevice = device
         shouldAutoReconnect = true
@@ -237,6 +272,7 @@ class BluetoothManager(private val context: Context) {
 
         // Create and configure WHC06 service
         whc06Service = WHC06Service().apply {
+            assumeHardwareIsLbs = hardwareUnitIsLbs // Inject the UI state immediately on connect!
             onForceSample = { weight, timestamp ->
                 this@BluetoothManager.onForceSample?.invoke(weight, timestamp)
             }
@@ -250,10 +286,7 @@ class BluetoothManager(private val context: Context) {
                     _connectionState.value = ConnectionState.Disconnected
                     _connectedDeviceName.value = null
                     _connectedDeviceType.value = null
-                }
-
-                if (shouldAutoReconnect) {
-                    scheduleRetry()
+                    _connectedDeviceAddress.value = null
                 }
             }
         }
@@ -264,8 +297,10 @@ class BluetoothManager(private val context: Context) {
         _connectionState.value = ConnectionState.Connected
         _connectedDeviceName.value = device.name
         _connectedDeviceType.value = device.type
+        _connectedDeviceAddress.value = device.address
         lastConnectedDeviceAddress = device.address
         prefs.edit().putString(KEY_LAST_CONNECTED_DEVICE, device.address).apply()
+        stopScanning()
 
         // Resume scanning to receive advertisements
         Log.i(TAG, "Resuming scan to receive WHC06 advertisements...")
@@ -273,7 +308,8 @@ class BluetoothManager(private val context: Context) {
         val settings = ScanSettings.Builder()
             .setScanMode(ScanSettings.SCAN_MODE_LOW_LATENCY)
             .build()
-        bluetoothLeScanner?.startScan(null, settings, scanCallback)
+        val filter = ScanFilter.Builder().setDeviceAddress(device.address).build()
+        bluetoothLeScanner?.startScan(listOf(filter), settings, scanCallback)
     }
 
     fun disconnect(preserveAutoReconnect: Boolean = false) {
@@ -307,6 +343,7 @@ class BluetoothManager(private val context: Context) {
         writeCharacteristic = null
         _connectedDeviceName.value = null
         _connectedDeviceType.value = null
+        _connectedDeviceAddress.value = null
 
         if (!preserveAutoReconnect) {
             lastConnectedDeviceAddress = null
@@ -332,6 +369,7 @@ class BluetoothManager(private val context: Context) {
                     retryCount = 0
                     _connectionState.value = ConnectionState.Connected
                     _connectedDeviceName.value = gatt.device.name ?: pendingDevice?.type?.displayName ?: "Unknown"
+                    _connectedDeviceAddress.value = gatt.device.address
                     _connectedDeviceType.value = pendingDevice?.type
                     lastConnectedDeviceAddress = gatt.device.address
                     prefs.edit().putString(KEY_LAST_CONNECTED_DEVICE, gatt.device.address).apply()
@@ -348,10 +386,12 @@ class BluetoothManager(private val context: Context) {
                     // If auto-reconnect is enabled, set Reconnecting state instead of Disconnected
                     if (shouldAutoReconnect) {
                         _connectionState.value = ConnectionState.Reconnecting
+                        scheduleRetry()
                     } else {
                         _connectionState.value = ConnectionState.Disconnected
                         _connectedDeviceName.value = null
                         _connectedDeviceType.value = null
+                        _connectedDeviceAddress.value = null
                     }
                     
                     notifyCharacteristic = null
@@ -360,10 +400,6 @@ class BluetoothManager(private val context: Context) {
                     // Stop device-specific services
                     pitchSixService?.stop()
                     pitchSixService = null
-
-                    if (shouldAutoReconnect) {
-                        scheduleRetry()
-                    }
                 }
             }
         }
@@ -381,9 +417,7 @@ class BluetoothManager(private val context: Context) {
             when (deviceType) {
                 DeviceType.TINDEQ_PROGRESSOR -> setupProgressorService(gatt)
                 DeviceType.PITCH_SIX_FORCE_BOARD -> setupPitchSixService(gatt)
-                DeviceType.WEIHENG_WHC06 -> {
-                    // WHC06 doesn't use GATT services
-                }
+                else -> {}
             }
         }
 
@@ -685,6 +719,8 @@ class BluetoothManager(private val context: Context) {
                 when (device.type) {
                     DeviceType.WEIHENG_WHC06 -> connectWHC06(device)
                     else -> {
+                        bluetoothGatt?.disconnect()
+                        bluetoothGatt?.close()
                         val bluetoothDevice = bluetoothAdapter?.getRemoteDevice(device.address)
                         bluetoothGatt = bluetoothDevice?.connectGatt(context, false, gattCallback, BluetoothDevice.TRANSPORT_LE)
                     }
