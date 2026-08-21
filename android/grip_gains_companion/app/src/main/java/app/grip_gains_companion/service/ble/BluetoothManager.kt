@@ -99,7 +99,7 @@ class BluetoothManager(private val context: Context) {
     val selectedDeviceType: StateFlow<DeviceType> = _selectedDeviceType.asStateFlow()
 
     // Callback for force samples
-    var onForceSample: ((Double, Long) -> Unit)? = null
+    var onForceSample: ((Double, Long, Boolean) -> Unit)? = null
 
     // Stored device address for auto-reconnect
     private var lastConnectedDeviceAddress: String? = null
@@ -274,7 +274,7 @@ class BluetoothManager(private val context: Context) {
         whc06Service = WHC06Service().apply {
             assumeHardwareIsLbs = hardwareUnitIsLbs // Inject the UI state immediately on connect!
             onForceSample = { weight, timestamp ->
-                this@BluetoothManager.onForceSample?.invoke(weight, timestamp)
+                this@BluetoothManager.onForceSample?.invoke(weight, timestamp, true)
             }
             onDisconnect = {
                 Log.i(TAG, "WHC06 disconnected (no advertisements)")
@@ -594,7 +594,7 @@ class BluetoothManager(private val context: Context) {
                 .int
                 .toLong() and 0xFFFFFFFFL
 
-            onForceSample?.invoke(weightFloat.toDouble(), timestamp)
+            onForceSample?.invoke(weightFloat.toDouble(), timestamp, false)
 
             offset += AppConstants.PROGRESSOR_SAMPLE_SIZE
         }
@@ -660,7 +660,7 @@ class BluetoothManager(private val context: Context) {
         // Create and configure PitchSix service
         pitchSixService = PitchSixService().apply {
             onForceSample = { weight, timestamp ->
-                this@BluetoothManager.onForceSample?.invoke(weight, timestamp)
+                this@BluetoothManager.onForceSample?.invoke(weight, timestamp, false)
             }
         }
         pitchSixService?.start()

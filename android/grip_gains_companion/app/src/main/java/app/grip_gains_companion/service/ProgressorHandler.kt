@@ -157,28 +157,33 @@ class ProgressorHandler {
     /**
      * Process a single force sample from the BLE device
      */
-    suspend fun processSample(rawWeight: Double, timestamp: Long) {
+    suspend fun processSample(rawWeight: Double, timestamp: Long, isSlowScale: Boolean = false) {
         lastTimestamp = timestamp
-        
+
         // Calculate display timestamp
         val displayTimestamp: Date
-        val firstDevice = firstDeviceTimestamp
-        val firstDisplay = firstDisplayTimestamp
-        
-        if (firstDevice != null && firstDisplay != null) {
-            if (timestamp < firstDevice) {
-                // Device timestamp reset (e.g., after BLE reconnection) - re-anchor
+
+        if (isSlowScale) {
+            displayTimestamp = Date(timestamp)
+        } else {
+            val firstDevice = firstDeviceTimestamp
+            val firstDisplay = firstDisplayTimestamp
+
+            if (firstDevice != null && firstDisplay != null) {
+                if (timestamp < firstDevice) {
+                    // Device timestamp reset (e.g., after BLE reconnection) - re-anchor
+                    firstDeviceTimestamp = timestamp
+                    firstDisplayTimestamp = Date()
+                    displayTimestamp = firstDisplayTimestamp!!
+                } else {
+                    val offsetMicros = timestamp - firstDevice
+                    displayTimestamp = Date(firstDisplay.time + offsetMicros / 1000)
+                }
+            } else {
                 firstDeviceTimestamp = timestamp
                 firstDisplayTimestamp = Date()
                 displayTimestamp = firstDisplayTimestamp!!
-            } else {
-                val offsetMicros = timestamp - firstDevice
-                displayTimestamp = Date(firstDisplay.time + offsetMicros / 1000)
             }
-        } else {
-            firstDeviceTimestamp = timestamp
-            firstDisplayTimestamp = Date()
-            displayTimestamp = firstDisplayTimestamp!!
         }
         
         // Process state transition first (may establish/update baseline)

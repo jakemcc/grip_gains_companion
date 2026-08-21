@@ -126,9 +126,9 @@ class MainActivity : ComponentActivity() {
         }
         
         // Connect BLE samples to handler
-        bluetoothManager.onForceSample = { force, timestamp ->
+        bluetoothManager.onForceSample = { force, timestamp, isSlowScale ->
             lifecycleScope.launch {
-                progressorHandler.processSample(force, timestamp)
+                progressorHandler.processSample(force, timestamp, isSlowScale)
             }
         }
         

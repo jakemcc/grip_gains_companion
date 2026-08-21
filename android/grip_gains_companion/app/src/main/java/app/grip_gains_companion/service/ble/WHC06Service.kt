@@ -23,8 +23,6 @@ class WHC06Service {
     var onDisconnect: (() -> Unit)? = null
     var assumeHardwareIsLbs: Boolean = false
 
-    private var baseTimestamp: Long = 0
-    private var sampleCounter: Long = 0
     private var disconnectTimer: Runnable? = null
     private val handler = Handler(Looper.getMainLooper())
 
@@ -33,8 +31,6 @@ class WHC06Service {
      */
     fun start() {
         Log.i(TAG, "Starting WHC06 service...")
-        baseTimestamp = System.currentTimeMillis() * 1000  // Convert to microseconds
-        sampleCounter = 0
         resetDisconnectTimer()
     }
 
@@ -95,9 +91,10 @@ class WHC06Service {
      * Generate synthetic timestamp (microseconds since start)
      */
     private fun generateTimestamp(): Long {
-        sampleCounter++
         // WHC06 advertises at ~6.5Hz at relatively ideal conditions, but can decrease (e.g. if other bluetooth devices are present)
-        return baseTimestamp + (sampleCounter * 1_000_000)  // 1 second per sample
+        // This variation causes synthetic timestamps to be inaccurate
+        // Generally slow enough to just use system millis instead
+        return System.currentTimeMillis()
     }
 
     /**
