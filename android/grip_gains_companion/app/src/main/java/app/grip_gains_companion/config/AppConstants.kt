@@ -124,10 +124,6 @@ object AppConstants {
     const val WHC06_WEIGHT_BYTE_OFFSET = 10
     /** Divide raw weight by 100 to get value in device's current unit */
     const val WHC06_WEIGHT_DIVISOR = 100.0
-    /** Unit byte is at payload byte 14 (after manufacturer ID stripped by Android).
-     *  Low nibble values: 1 = kg, 2 = lbs, 3 = stone, 4 = jin */
-    const val WHC06_UNIT_BYTE_OFFSET = 14
-    const val WHC06_UNIT_LBS: Byte = 2
     /** Conversion factor: lbs * 0.453592 = kg */
     const val WHC06_LBS_TO_KG = 0.453592
     /** Minimum advertisement data size (need byte 14 for unit) */
