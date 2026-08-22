@@ -145,6 +145,7 @@ class MainActivity : ComponentActivity() {
         setContent {
             val connectionState by bluetoothManager.connectionState.collectAsState()
             val isConnected = connectionState == ConnectionState.Connected
+            val isReconnecting = connectionState == ConnectionState.Reconnecting
             val simulatedForceActive by debugForceDataSource.isRunning.collectAsState()
             
             // Collect preferences
@@ -287,7 +288,7 @@ class MainActivity : ComponentActivity() {
                             )
                         }
                         
-                        isConnected || simulatedForceActive || skippedDevice -> {
+                        isConnected || isReconnecting || simulatedForceActive || skippedDevice -> {
                             MainScreen(
                                 bluetoothManager = bluetoothManager,
                                 progressorHandler = progressorHandler,
