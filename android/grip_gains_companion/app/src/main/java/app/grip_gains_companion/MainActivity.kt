@@ -50,7 +50,7 @@ import kotlinx.coroutines.launch
 import java.util.Locale
 
 class MainActivity : ComponentActivity() {
-    
+
     private lateinit var bluetoothManager: BluetoothManager
     private lateinit var progressorHandler: ProgressorHandler
     private lateinit var webViewBridge: WebViewBridge
@@ -126,9 +126,9 @@ class MainActivity : ComponentActivity() {
         }
         
         // Connect BLE samples to handler
-        bluetoothManager.onForceSample = { force, timestamp ->
+        bluetoothManager.onForceSample = { force, timestamp, isSlowScale ->
             lifecycleScope.launch {
-                progressorHandler.processSample(force, timestamp)
+                progressorHandler.processSample(force, timestamp, isSlowScale)
             }
         }
         
@@ -152,6 +152,12 @@ class MainActivity : ComponentActivity() {
             val useLbs by preferencesRepository.useLbs.collectAsState(initial = false)
             val showStatusBar by preferencesRepository.showStatusBar.collectAsState(initial = true)
             val expandedForceBar by preferencesRepository.expandedForceBar.collectAsState(initial = true)
+
+            // --- SYNC HARDWARE PARSER TO UI ---
+            LaunchedEffect(useLbs) {
+                bluetoothManager.setHardwareUnitIsLbs(useLbs)
+            }
+
             val showForceGraph by preferencesRepository.showForceGraph.collectAsState(initial = true)
             val forceGraphWindow by preferencesRepository.forceGraphWindow.collectAsState(initial = 5)
             val enableTargetWeight by preferencesRepository.enableTargetWeight.collectAsState(initial = true)

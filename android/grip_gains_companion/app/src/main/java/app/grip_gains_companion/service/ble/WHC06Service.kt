@@ -16,7 +16,7 @@ class WHC06Service {
 
     companion object {
         private const val TAG = "WHC06Service"
-        private const val DISCONNECT_TIMEOUT_MS = 5000L  // 5 seconds without data = disconnected
+        private const val DISCONNECT_TIMEOUT_MS = 15000L  // 15 seconds without data = disconnected
     }
 
     /** Callback for force samples (weight in kg, timestamp in microseconds) */
@@ -24,9 +24,8 @@ class WHC06Service {
 
     /** Callback when device stops advertising (disconnect) */
     var onDisconnect: (() -> Unit)? = null
+    var assumeHardwareIsLbs: Boolean = false
 
-    private var baseTimestamp: Long = 0
-    private var sampleCounter: Long = 0
     private var disconnectTimer: Runnable? = null
     private val handler = Handler(Looper.getMainLooper())
 
@@ -35,8 +34,6 @@ class WHC06Service {
      */
     fun start() {
         Log.i(TAG, "Starting WHC06 service...")
-        baseTimestamp = System.currentTimeMillis() * 1000  // Convert to microseconds
-        sampleCounter = 0
         resetDisconnectTimer()
     }
 
@@ -98,11 +95,8 @@ class WHC06Service {
         // Get raw value in device's current unit
         val rawValue = rawWeight / AppConstants.WHC06_WEIGHT_DIVISOR
 
-        // Read unit from byte 14 (low nibble)
-        val unitByte = (data[AppConstants.WHC06_UNIT_BYTE_OFFSET].toInt() and 0x0f).toByte()
-
         // Convert to kg if device is set to lbs
-        return if (unitByte == AppConstants.WHC06_UNIT_LBS) {
+        return if (assumeHardwareIsLbs) {
             rawValue * AppConstants.WHC06_LBS_TO_KG
         } else {
             rawValue
@@ -113,9 +107,10 @@ class WHC06Service {
      * Generate synthetic timestamp (microseconds since start)
      */
     private fun generateTimestamp(): Long {
-        sampleCounter++
-        // WHC06 advertises at ~1Hz
-        return baseTimestamp + (sampleCounter * 1_000_000)  // 1 second per sample
+        // WHC06 advertises at ~6.5Hz at relatively ideal conditions, but can decrease (e.g. if other bluetooth devices are present)
+        // This variation causes synthetic timestamps to be inaccurate
+        // Generally slow enough to just use system millis instead
+        return System.currentTimeMillis()
     }
 
     /**
