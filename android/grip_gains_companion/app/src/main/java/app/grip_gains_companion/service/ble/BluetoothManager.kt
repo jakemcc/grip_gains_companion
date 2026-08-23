@@ -186,6 +186,15 @@ class BluetoothManager(private val context: Context) {
         }
     }
 
+    fun resetScan() {
+        bluetoothLeScanner?.stopScan(scanCallback)
+        val settings = ScanSettings.Builder()
+            .setScanMode(ScanSettings.SCAN_MODE_LOW_LATENCY)
+            .build()
+        val filter = ScanFilter.Builder().setDeviceAddress(_connectedDeviceAddress.value).build()
+        bluetoothLeScanner?.startScan(listOf(filter), settings, scanCallback)
+    }
+
     private val scanCallback = object : ScanCallback() {
         override fun onScanResult(callbackType: Int, result: ScanResult) {
             val deviceName = result.device.name

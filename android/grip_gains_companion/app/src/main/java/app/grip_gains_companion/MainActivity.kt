@@ -22,6 +22,7 @@ import app.grip_gains_companion.data.PreferencesRepository
 import app.grip_gains_companion.debug.DebugForceDataSource
 import app.grip_gains_companion.debug.createDebugForceDataSource
 import app.grip_gains_companion.model.ConnectionState
+import app.grip_gains_companion.model.DeviceType
 import app.grip_gains_companion.model.ProgressorState
 import app.grip_gains_companion.service.BackgroundInactivityShutdownTimer
 import app.grip_gains_companion.service.ProgressorHandler
@@ -375,6 +376,11 @@ class MainActivity : ComponentActivity() {
                     webViewBridge.clickEndSessionButton()
                 } else {
                     webViewBridge.clickFailButton()
+                }
+
+                // Bandaid fix for WH-C06 connection degradation after ~4-6 minutes
+                if (bluetoothManager.connectedDeviceType.value == DeviceType.WEIHENG_WHC06) {
+                    bluetoothManager.resetScan()
                 }
                 
                 val enableHaptics = preferencesRepository.enableHaptics.first()
