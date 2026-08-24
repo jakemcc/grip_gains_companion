@@ -394,11 +394,6 @@ class MainActivity : ComponentActivity() {
                 } else {
                     webViewBridge.clickFailButton()
                 }
-
-                // Bandaid fix for WH-C06 connection degradation after ~4-6 minutes
-                if (bluetoothManager.connectedDeviceType.value == DeviceType.WEIHENG_WHC06) {
-                    bluetoothManager.resetScan()
-                }
                 
                 val enableHaptics = preferencesRepository.enableHaptics.first()
                 if (enableHaptics) {
@@ -498,6 +493,11 @@ class MainActivity : ComponentActivity() {
                         countdownSound.onRemainingTimeChanged(remainingTime)
                     } else {
                         countdownSound.onRemainingTimeChanged(null)
+                    }
+
+                    // Bandaid fix for WH-C06 connection degradation after ~4-6 minutes
+                    if (remainingTime == 1 && !failButtonEnabled && bluetoothManager.connectedDeviceType.value == DeviceType.WEIHENG_WHC06) {
+                        bluetoothManager.resetScan()
                     }
                 }
         }
