@@ -495,6 +495,7 @@ class MainActivity : ComponentActivity() {
                         countdownSound.onRemainingTimeChanged(null)
                     }
 
+                    if (debugForceDataSource.isRunning.value) return@collect
                     // Bandaid fix for WH-C06 connection degradation after ~4-6 minutes
                     if (remainingTime == 1 && !failButtonEnabled && bluetoothManager.connectedDeviceType.value == DeviceType.WEIHENG_WHC06) {
                         bluetoothManager.resetScan()
