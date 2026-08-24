@@ -187,6 +187,10 @@ class BluetoothManager(private val context: Context) {
     }
 
     fun resetScan() {
+        if (_connectionState.value != ConnectionState.Connected || _connectedDeviceAddress.value == null) {
+            Log.e(TAG, "Tried to reset scan when not connected")
+            return
+        }
         bluetoothLeScanner?.stopScan(scanCallback)
         val settings = ScanSettings.Builder()
             .setScanMode(ScanSettings.SCAN_MODE_LOW_LATENCY)
