@@ -22,6 +22,7 @@ import app.grip_gains_companion.data.PreferencesRepository
 import app.grip_gains_companion.debug.DebugForceDataSource
 import app.grip_gains_companion.debug.createDebugForceDataSource
 import app.grip_gains_companion.model.ConnectionState
+import app.grip_gains_companion.model.DeviceType
 import app.grip_gains_companion.model.ProgressorState
 import app.grip_gains_companion.service.BackgroundInactivityShutdownTimer
 import app.grip_gains_companion.service.ProgressorHandler
@@ -42,6 +43,7 @@ import app.grip_gains_companion.util.TargetSoundSettings
 import app.grip_gains_companion.util.ToneGenerator
 import app.grip_gains_companion.util.playEnabledTargetFeedback
 import app.grip_gains_companion.util.playTargetFeedbackPreview
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.first
@@ -69,6 +71,8 @@ class MainActivity : ComponentActivity() {
     }
     private var textToSpeech: TextToSpeech? = null
     private var textToSpeechReady = false
+    private var lastScanResetCheck: Long? = null
+    private val scanResetPeriod = 180_000L // 3 minutes between scan resets
     
     private val requiredPermissions: Array<String>
         get() = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
@@ -364,6 +368,20 @@ class MainActivity : ComponentActivity() {
         val thresholdSeconds = targetDuration.toDouble() * thresholdPercent
         return elapsedTime.toDouble() < thresholdSeconds
     }
+
+    /**
+     * Periodically attempt to reset the bluetooth scan during a long rep.
+     * Used for WH-C06 due to its tendency to decrease response rate after a scan is established.
+     */
+    private suspend fun tryScanReset() {
+        lastScanResetCheck = System.currentTimeMillis()
+        val currentScanResetCheck = lastScanResetCheck
+        delay(scanResetPeriod)
+        if (currentScanResetCheck == lastScanResetCheck && progressorHandler.state.value.isEngaged && bluetoothManager.connectedDeviceType.value == DeviceType.WEIHENG_WHC06) {
+            bluetoothManager.resetScan()
+            tryScanReset()
+        }
+    }
     
     private fun setupEventHandlers() {
         // Grip failed -> click fail or end session button
@@ -380,6 +398,15 @@ class MainActivity : ComponentActivity() {
                 val enableHaptics = preferencesRepository.enableHaptics.first()
                 if (enableHaptics) {
                     hapticManager.warning()
+                }
+            }
+        }
+
+        lifecycleScope.launch {
+            progressorHandler.state.collect {
+                if (debugForceDataSource.isRunning.value) return@collect
+                if (it.isEngaged && bluetoothManager.connectedDeviceType.value == DeviceType.WEIHENG_WHC06) {
+                    tryScanReset()
                 }
             }
         }
@@ -466,6 +493,12 @@ class MainActivity : ComponentActivity() {
                         countdownSound.onRemainingTimeChanged(remainingTime)
                     } else {
                         countdownSound.onRemainingTimeChanged(null)
+                    }
+
+                    if (debugForceDataSource.isRunning.value) return@collect
+                    // Bandaid fix for WH-C06 connection degradation after ~4-6 minutes
+                    if (remainingTime == 1 && !failButtonEnabled && bluetoothManager.connectedDeviceType.value == DeviceType.WEIHENG_WHC06) {
+                        bluetoothManager.resetScan()
                     }
                 }
         }
