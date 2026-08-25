@@ -28,6 +28,7 @@ import app.grip_gains_companion.service.BackgroundInactivityShutdownTimer
 import app.grip_gains_companion.service.ProgressorHandler
 import app.grip_gains_companion.service.TargetFeedbackEvent
 import app.grip_gains_companion.service.ble.BluetoothManager
+import app.grip_gains_companion.service.ble.collectPeriodicScanResets
 import app.grip_gains_companion.service.web.WebViewBridge
 import app.grip_gains_companion.ui.screens.DeviceScannerScreen
 import app.grip_gains_companion.ui.screens.LogViewerScreen
@@ -43,11 +44,10 @@ import app.grip_gains_companion.util.TargetSoundSettings
 import app.grip_gains_companion.util.ToneGenerator
 import app.grip_gains_companion.util.playEnabledTargetFeedback
 import app.grip_gains_companion.util.playTargetFeedbackPreview
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.collectLatest
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.drop
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import java.util.Locale
 
@@ -71,7 +71,6 @@ class MainActivity : ComponentActivity() {
     }
     private var textToSpeech: TextToSpeech? = null
     private var textToSpeechReady = false
-    private var lastScanResetCheck: Long? = null
     private val scanResetPeriod = 180_000L // 3 minutes between scan resets
     
     private val requiredPermissions: Array<String>
@@ -369,20 +368,6 @@ class MainActivity : ComponentActivity() {
         return elapsedTime.toDouble() < thresholdSeconds
     }
 
-    /**
-     * Periodically attempt to reset the bluetooth scan during a long rep.
-     * Used for WH-C06 due to its tendency to decrease response rate after a scan is established.
-     */
-    private suspend fun tryScanReset() {
-        lastScanResetCheck = System.currentTimeMillis()
-        val currentScanResetCheck = lastScanResetCheck
-        delay(scanResetPeriod)
-        if (currentScanResetCheck == lastScanResetCheck && progressorHandler.state.value.isEngaged && bluetoothManager.connectedDeviceType.value == DeviceType.WEIHENG_WHC06) {
-            bluetoothManager.resetScan()
-            tryScanReset()
-        }
-    }
-    
     private fun setupEventHandlers() {
         // Grip failed -> click fail or end session button
         lifecycleScope.launch {
@@ -402,12 +387,19 @@ class MainActivity : ComponentActivity() {
             }
         }
 
+            // Periodically attempt to reset the bluetooth scan during
+            // a long rep. Used for WH-C06 due to its tendency to
+            // decrease response rate after a scan is established. See
+            // https://github.com/jakemcc/grip_gains_companion/pull/2/changes
         lifecycleScope.launch {
-            progressorHandler.state.collect {
-                if (debugForceDataSource.isRunning.value) return@collect
-                if (it.isEngaged && bluetoothManager.connectedDeviceType.value == DeviceType.WEIHENG_WHC06) {
-                    tryScanReset()
-                }
+            combine(
+                progressorHandler.state,
+                debugForceDataSource.isRunning,
+                bluetoothManager.connectedDeviceType
+            ) { state, simulated, deviceType ->
+                state.isEngaged && !simulated && deviceType == DeviceType.WEIHENG_WHC06
+            }.collectPeriodicScanResets(scanResetPeriod) {
+                bluetoothManager.resetScan()
             }
         }
         
