@@ -28,7 +28,7 @@ An unofficial Android companion app for [gripgains.ca](https://gripgains.ca/) th
 ## Installation
 
 1. Clone this repository
-2. Change to the Android project directory: `cd android/grip_gains_companion`
+2. Change to the project directory: `cd grip_gains_companion`
 3. Build with `./gradlew assembleDebug` or `make assemble`
 4. Install the generated APK on your Android device
 

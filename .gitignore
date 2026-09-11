@@ -3,6 +3,9 @@
 **/build/
 local.properties
 *.apk
+/captures/
+.externalNativeBuild/
+.cxx/
 
 # Android Studio
 .idea/
