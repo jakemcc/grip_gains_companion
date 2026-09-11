@@ -1,6 +1,6 @@
-# Grip Gains Unofficial Companion
+# Grip Gains Auto
 
-An unofficial iOS companion app for [gripgains.ca](https://gripgains.ca/) that adds quality-of-life features.
+An unofficial Android companion app for [gripgains.ca](https://gripgains.ca/) that adds quality-of-life features.
 
 ## Features
 
@@ -10,18 +10,16 @@ An unofficial iOS companion app for [gripgains.ca](https://gripgains.ca/) that a
 - **Target weight feedback** - Set a target weight and get visual, audio, and haptic feedback when you're off target
 - **Real-time force graph** - Visualize your grip force over time with a live chart
 - **End-of-set summary** - View detailed rep statistics after each set
-- **Session history** - Track your training sessions with iCloud sync
-- **Share results** - Export set summaries or rep graphs as images
+- **Background timer** - Keep the timer running accurately while the app is backgrounded
+- **Debug log viewer** - Inspect and share diagnostic logs when troubleshooting
 
 ### Experimental
 
 - **Auto-set target weight** - Automatically sets the website's target weight picker from measured weight or your configured manual target
-- **Background timer sync** - Keeps the timer accurate when the app is in background
-- **Live Activity** - Shows elapsed and remaining time in Dynamic Island when backgrounded
 
 ## Requirements
 
-- iOS 17.0+
+- Android 10 (API 29)+
 - Supported devices (optional - the app works without one if you just want to keep the screen awake):
   - Tindeq Progressor
   - PitchSix
@@ -30,8 +28,9 @@ An unofficial iOS companion app for [gripgains.ca](https://gripgains.ca/) that a
 ## Installation
 
 1. Clone this repository
-2. Open `GripGainsCompanion.xcodeproj` in Xcode
-3. Build and run on your iOS device
+2. Change to the Android project directory: `cd android/grip_gains_companion`
+3. Build with `./gradlew assembleDebug` or `make assemble`
+4. Install the generated APK on your Android device
 
 ## Disclaimer
 

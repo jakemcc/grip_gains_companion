@@ -3,7 +3,7 @@ package app.grip_gains_companion.config
 import java.util.UUID
 
 /**
- * Configuration constants ported from iOS AppConstants.swift
+ * Configuration constants shared by the timer and BLE services.
  */
 object AppConstants {
     // MARK: - Thresholds (kg)

@@ -14,7 +14,7 @@ import java.util.TimerTask
 
 /**
  * Foreground service to display timer status in notification
- * This is the Android equivalent of iOS Live Activity
+ * Keeps the active timer visible while the app is in the background.
  */
 class TimerForegroundService : Service() {
     
