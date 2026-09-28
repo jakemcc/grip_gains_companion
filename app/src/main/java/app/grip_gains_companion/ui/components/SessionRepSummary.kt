@@ -22,9 +22,9 @@ import app.grip_gains_companion.util.GripStatisticsFormatter
 
 internal fun shouldShowEndOfSessionSummary(
     enabled: Boolean,
-    saveButtonVisible: Boolean,
+    sessionResultsVisible: Boolean,
     hasRepResults: Boolean
-): Boolean = enabled && saveButtonVisible && hasRepResults
+): Boolean = enabled && sessionResultsVisible && hasRepResults
 
 @Composable
 fun SessionRepSummary(

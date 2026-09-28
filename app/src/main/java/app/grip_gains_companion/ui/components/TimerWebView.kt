@@ -66,7 +66,7 @@ fun TimerWebView(
                     view?.evaluateJavascript(JavaScriptBridge.targetWeightObserverScript, null)
                     view?.evaluateJavascript(JavaScriptBridge.remainingTimeObserverScript, null)
                     view?.evaluateJavascript(JavaScriptBridge.settingsVisibilityObserverScript, null)
-                    view?.evaluateJavascript(JavaScriptBridge.saveButtonObserverScript, null)
+                    view?.evaluateJavascript(JavaScriptBridge.sessionResultsObserverScript, null)
                 }
             }
             

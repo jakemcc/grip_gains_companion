@@ -71,7 +71,7 @@ fun MainScreen(
     
     // Web view state
     val scrapedTargetWeight by webViewBridge.targetWeight.collectAsState()
-    val saveButtonVisible by webViewBridge.saveButtonVisible.collectAsState()
+    val sessionResultsVisible by webViewBridge.sessionResultsVisible.collectAsState()
     
     // Effective target weight
     val effectiveTargetWeight = remember(
@@ -132,7 +132,7 @@ fun MainScreen(
             if (
                 shouldShowEndOfSessionSummary(
                     enabled = showEndOfSessionSummary,
-                    saveButtonVisible = saveButtonVisible,
+                    sessionResultsVisible = sessionResultsVisible,
                     hasRepResults = sessionRepResults.isNotEmpty()
                 )
             ) {

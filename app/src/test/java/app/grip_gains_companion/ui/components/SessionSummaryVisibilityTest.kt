@@ -11,7 +11,7 @@ class SessionSummaryVisibilityTest {
         assertFalse(
             shouldShowEndOfSessionSummary(
                 enabled = false,
-                saveButtonVisible = true,
+                sessionResultsVisible = true,
                 hasRepResults = true
             )
         )
@@ -22,21 +22,21 @@ class SessionSummaryVisibilityTest {
         assertTrue(
             shouldShowEndOfSessionSummary(
                 enabled = true,
-                saveButtonVisible = true,
+                sessionResultsVisible = true,
                 hasRepResults = true
             )
         )
         assertFalse(
             shouldShowEndOfSessionSummary(
                 enabled = true,
-                saveButtonVisible = false,
+                sessionResultsVisible = false,
                 hasRepResults = true
             )
         )
         assertFalse(
             shouldShowEndOfSessionSummary(
                 enabled = true,
-                saveButtonVisible = true,
+                sessionResultsVisible = true,
                 hasRepResults = false
             )
         )

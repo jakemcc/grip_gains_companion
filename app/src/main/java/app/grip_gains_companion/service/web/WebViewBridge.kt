@@ -44,8 +44,8 @@ class WebViewBridge {
     private val _settingsVisible = MutableStateFlow(true)
     val settingsVisible: StateFlow<Boolean> = _settingsVisible.asStateFlow()
     
-    private val _saveButtonVisible = MutableStateFlow(false)
-    val saveButtonVisible: StateFlow<Boolean> = _saveButtonVisible.asStateFlow()
+    private val _sessionResultsVisible = MutableStateFlow(false)
+    val sessionResultsVisible: StateFlow<Boolean> = _sessionResultsVisible.asStateFlow()
     
     fun setWebView(webView: WebView) {
         this.webView = webView
@@ -101,8 +101,8 @@ class WebViewBridge {
     }
     
     @JavascriptInterface
-    fun onSaveButtonVisibilityChanged(visible: Boolean) {
-        _saveButtonVisible.value = visible
+    fun onSessionResultsVisibilityChanged(visible: Boolean) {
+        _sessionResultsVisible.value = visible
     }
     
     // MARK: - Android -> JavaScript

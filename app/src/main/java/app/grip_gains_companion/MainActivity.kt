@@ -450,7 +450,7 @@ class MainActivity : ComponentActivity() {
 
         // Leaving the completed-session screen starts a fresh, in-memory summary.
         lifecycleScope.launch {
-            webViewBridge.saveButtonVisible.drop(1).collect { visible ->
+            webViewBridge.sessionResultsVisible.drop(1).collect { visible ->
                 if (!visible) progressorHandler.clearSessionRepResults()
             }
         }

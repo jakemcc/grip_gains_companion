@@ -7,13 +7,13 @@ import org.junit.Test
 class WebViewBridgeSessionSummaryTest {
 
     @Test
-    fun exposesSaveButtonVisibilityForSessionSummaryLifecycle() {
+    fun exposesSessionResultsVisibilityForSessionSummaryLifecycle() {
         val bridge = WebViewBridge()
 
-        assertFalse(bridge.saveButtonVisible.value)
-        bridge.onSaveButtonVisibilityChanged(true)
-        assertTrue(bridge.saveButtonVisible.value)
-        bridge.onSaveButtonVisibilityChanged(false)
-        assertFalse(bridge.saveButtonVisible.value)
+        assertFalse(bridge.sessionResultsVisible.value)
+        bridge.onSessionResultsVisibilityChanged(true)
+        assertTrue(bridge.sessionResultsVisible.value)
+        bridge.onSessionResultsVisibilityChanged(false)
+        assertFalse(bridge.sessionResultsVisible.value)
     }
 }

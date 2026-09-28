@@ -519,16 +519,16 @@ object JavaScriptBridge {
     """.trimIndent()
     
     /**
-     * MutationObserver script to detect "Save to Database" button appearance
+     * Detect the completed-session screen in either the regular or Basic Timer.
      */
-    val saveButtonObserverScript = """
+    val sessionResultsObserverScript = """
         (function() {
-            if (window.__gripGainsCompanionSaveButtonObserverInstalled) return;
-            window.__gripGainsCompanionSaveButtonObserverInstalled = true;
-            let lastSaveButtonVisible = false;
+            if (window.__gripGainsCompanionSessionResultsObserverInstalled) return;
+            window.__gripGainsCompanionSessionResultsObserverInstalled = true;
+            let lastResultsVisible = false;
             let hasReportedVisibility = false;
 
-            function checkSaveButton() {
+            function checkSessionResults() {
                 const buttons = document.querySelectorAll('button.btn.btn-primary');
                 let saveButtonFound = false;
 
@@ -539,16 +539,20 @@ object JavaScriptBridge {
                     }
                 }
 
-                if (!hasReportedVisibility || saveButtonFound !== lastSaveButtonVisible) {
+                const basicResultsFound = Array.from(document.querySelectorAll('.results-title'))
+                    .some(heading => heading.textContent.trim() === 'Session Results');
+                const resultsVisible = saveButtonFound || basicResultsFound;
+
+                if (!hasReportedVisibility || resultsVisible !== lastResultsVisible) {
                     hasReportedVisibility = true;
-                    Android.onSaveButtonVisibilityChanged(saveButtonFound);
+                    Android.onSessionResultsVisibilityChanged(resultsVisible);
                 }
-                lastSaveButtonVisible = saveButtonFound;
+                lastResultsVisible = resultsVisible;
             }
 
-            function setupSaveButtonObserver() {
+            function setupSessionResultsObserver() {
                 const observer = new MutationObserver(function() {
-                    checkSaveButton();
+                    checkSessionResults();
                 });
 
                 observer.observe(document.body, {
@@ -556,13 +560,13 @@ object JavaScriptBridge {
                     subtree: true
                 });
 
-                checkSaveButton();
+                checkSessionResults();
             }
 
             if (document.readyState === 'loading') {
-                document.addEventListener('DOMContentLoaded', setupSaveButtonObserver);
+                document.addEventListener('DOMContentLoaded', setupSessionResultsObserver);
             } else {
-                setupSaveButtonObserver();
+                setupSessionResultsObserver();
             }
         })();
     """.trimIndent()

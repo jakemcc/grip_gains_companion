@@ -54,11 +54,13 @@ class JavaScriptBridgeTest {
     }
 
     @Test
-    fun saveButtonObserverReportsBothEnteringAndLeavingTheSessionSummary() {
-        val script = JavaScriptBridge.saveButtonObserverScript
+    fun sessionResultsObserverRecognizesBothTimerCompletionScreens() {
+        val script = JavaScriptBridge.sessionResultsObserverScript
 
-        assertTrue(script.contains("onSaveButtonVisibilityChanged(saveButtonFound)"))
-        assertTrue(script.contains("saveButtonFound !== lastSaveButtonVisible"))
-        assertTrue(script.contains("__gripGainsCompanionSaveButtonObserverInstalled"))
+        assertTrue(script.contains("Save to Database"))
+        assertTrue(script.contains(".results-title"))
+        assertTrue(script.contains("Session Results"))
+        assertTrue(script.contains("onSessionResultsVisibilityChanged(resultsVisible)"))
+        assertTrue(script.contains("resultsVisible !== lastResultsVisible"))
     }
 }
