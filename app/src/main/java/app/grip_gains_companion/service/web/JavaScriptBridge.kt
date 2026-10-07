@@ -459,7 +459,10 @@ object JavaScriptBridge {
             window.__gripGainsCompanionRemainingTimeObserverInstalled = true;
 
             function scrapeAndSendRemainingTime() {
-                const timerValue = document.querySelector('.timer-value');
+                const timerValue = Array.from(document.querySelectorAll('.timer-value')).find(element => {
+                    const style = window.getComputedStyle(element);
+                    return style.visibility === 'visible' && style.display !== 'none';
+                });
                 if (!timerValue) {
                     Android.onRemainingTimeChanged(-9999);
                     return;
@@ -504,7 +507,9 @@ object JavaScriptBridge {
                 observer.observe(document.body, {
                     childList: true,
                     subtree: true,
-                    characterData: true
+                    characterData: true,
+                    attributes: true,
+                    attributeFilter: ['class', 'style']
                 });
 
                 scrapeAndSendRemainingTime();
